@@ -1989,15 +1989,55 @@ public static class RulesetCharacterPatcher
 
                 var classLevel = __instance.GetSpellcastingLevel(spellRepertoire);
 
+                //BEGIN PATCH
+                //PATCH: supports `AutoPreparedSpellsUpToMaxSpellSlotLevel`
+                var maxSpellLevel =
+                    autoPreparedSpells.HasSubFeatureOfType<AutoPreparedSpellsUpToMaxSpellSlotLevel>()
+                        ? GetMaxSpellSlotLevel(__instance, spellRepertoire, classLevel)
+                        : int.MaxValue;
+                //END PATCH
+
                 foreach (var preparedSpellsGroup in autoPreparedSpells.AutoPreparedSpellsGroups
                              .Where(preparedSpellsGroup => preparedSpellsGroup.ClassLevel <= classLevel))
                 {
-                    spellRepertoire.AutoPreparedSpells.AddRange(preparedSpellsGroup.SpellsList);
+                    spellRepertoire.AutoPreparedSpells.AddRange(preparedSpellsGroup.SpellsList
+                        .Where(spell => spell.SpellLevel <= maxSpellLevel));
                     spellRepertoire.AutoPreparedTag = autoPreparedSpells.AutoPreparedTag;
                 }
             }
 
             return false;
+        }
+
+        // computed from class levels instead of repertoire spell casting level as that one might not be refreshed yet
+        private static int GetMaxSpellSlotLevel(
+            RulesetCharacter character, RulesetSpellRepertoire spellRepertoire, int classLevel)
+        {
+            if (character is RulesetCharacterHero hero && SharedSpellsContext.IsMulticaster(hero))
+            {
+                return Math.Max(
+                    SharedSpellsContext.GetSharedSpellLevel(hero), SharedSpellsContext.GetWarlockSpellLevel(hero));
+            }
+
+            var slotsPerLevels = spellRepertoire.SpellCastingFeature?.SlotsPerLevels;
+
+            if (slotsPerLevels == null || classLevel < 1 || classLevel > slotsPerLevels.Count)
+            {
+                return 0;
+            }
+
+            var slots = slotsPerLevels[classLevel - 1].Slots;
+            var maxSpellLevel = 0;
+
+            for (var i = 0; i < (slots?.Count ?? 0); i++)
+            {
+                if (slots[i] > 0)
+                {
+                    maxSpellLevel = i + 1;
+                }
+            }
+
+            return maxSpellLevel;
         }
     }
 

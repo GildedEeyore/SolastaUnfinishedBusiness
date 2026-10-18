@@ -51,6 +51,7 @@ internal static class SpellsContext
     internal static readonly SpellDefinition BlessingOfRime = BuildBlessingOfRime();
     internal static readonly SpellDefinition BlindingSmite = BuildBlindingSmite();
     internal static readonly SpellDefinition BurstOfRadiance = BuildBurstOfRadiance();
+    internal static readonly SpellDefinition ChromaticOrb = BuildChromaticOrb();
     internal static readonly SpellDefinition Command = BuildCommand();
     internal static readonly SpellDefinition CorruptingBolt = BuildCorruptingBolt();
     internal static readonly SpellDefinition CausticZap = BuildCausticZap();
@@ -290,7 +291,7 @@ internal static class SpellsContext
         RegisterSpell(CausticZap, 0, SpellListSorcerer, SpellListWizard, spellListInventorClass);
         RegisterSpell(Command, 0, SpellListBard, SpellListPaladin, SpellListCleric);
         RegisterSpell(BuildChaosBolt(), 0, SpellListSorcerer);
-        RegisterSpell(BuildChromaticOrb(), 0, SpellListSorcerer, SpellListWizard);
+        RegisterSpell(ChromaticOrb, 0, SpellListSorcerer, SpellListWizard);
         RegisterSpell(BuildDissonantWhispers(), 0, SpellListBard);
         RegisterSpell(EarthTremor, 0, SpellListBard, SpellListDruid, SpellListSorcerer, SpellListWizard);
         RegisterSpell(EnsnaringStrike, 0, SpellListRanger);
