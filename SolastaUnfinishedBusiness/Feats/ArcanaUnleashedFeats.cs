@@ -7,6 +7,7 @@ using SolastaUnfinishedBusiness.Api.GameExtensions;
 using SolastaUnfinishedBusiness.Api.Helpers;
 using SolastaUnfinishedBusiness.Api.LanguageExtensions;
 using SolastaUnfinishedBusiness.Behaviors;
+using SolastaUnfinishedBusiness.Behaviors.Specific;
 using SolastaUnfinishedBusiness.Builders;
 using SolastaUnfinishedBusiness.Builders.Features;
 using SolastaUnfinishedBusiness.Interfaces;
@@ -23,11 +24,185 @@ internal static class ArcanaUnleashedFeats
 {
     internal static void CreateFeats([NotNull] List<FeatDefinition> feats)
     {
+        var abjurationAdeptGroup = BuildAbjurationAdept(feats);
         var evocationAdeptGroup = BuildEvocationAdept(feats);
 
         GroupFeats.FeatGroupSpellCombat.AddFeats(
+            abjurationAdeptGroup,
             evocationAdeptGroup);
     }
+
+    #region Abjuration Adept
+
+    private static FeatDefinition BuildAbjurationAdept(List<FeatDefinition> feats)
+    {
+        const string NAME = "FeatAbjurationAdept";
+        const string FAMILY = "AbjurationAdept";
+
+        // spells are only added to the repertoire once the caster has spell slots of the spell level
+        var autoPreparedSpells = FeatureDefinitionAutoPreparedSpellsBuilder
+            .Create($"AutoPreparedSpells{NAME}")
+            .SetGuiPresentationNoContent(true)
+            .AddCustomSubFeatures(
+                ValidateRepertoireForAutoprepared.AnyClassOrSubclass,
+                AutoPreparedSpellsUpToMaxSpellSlotLevel.Marker)
+            .SetPreparedSpellGroups(
+                BuildSpellGroup(0,
+                    Shield,
+                    LesserRestoration,
+                    ProtectionFromEnergy,
+                    Banishment,
+                    MassCureWounds))
+            .SetSpellcastingClass(null)
+            .SetAutoTag(FAMILY)
+            .AddToDB();
+
+        var featureProtectiveWard = FeatureDefinitionBuilder
+            .Create($"Feature{NAME}ProtectiveWard")
+            .SetGuiPresentation(Category.Feature)
+            .AddToDB();
+
+        featureProtectiveWard.AddCustomSubFeatures(
+            new MagicEffectFinishedByMeProtectiveWard(featureProtectiveWard));
+
+        var attributeIncreases = new List<(FeatureDefinition, string)>
+        {
+            (AttributeModifierCreed_Of_Pakri, "Int"),
+            (AttributeModifierCreed_Of_Maraike, "Wis"),
+            (AttributeModifierCreed_Of_Solasta, "Cha")
+        };
+
+        var groupFeats = new List<FeatDefinition>();
+
+        foreach (var (attributeIncrease, postfix) in attributeIncreases)
+        {
+            groupFeats.Add(FeatDefinitionWithPrerequisitesBuilder
+                .Create($"{NAME}{postfix}")
+                .SetGuiPresentation(Category.Feat)
+                .SetFeatures(attributeIncrease, autoPreparedSpells, featureProtectiveWard)
+                .SetValidators(ValidatorsFeat.IsLevel4)
+                .SetMustCastSpellsPrerequisite()
+                .SetFeatFamily(FAMILY)
+                .AddToDB());
+        }
+
+        feats.AddRange(groupFeats);
+
+        var abjurationAdeptGroup = GroupFeats.MakeGroupWithPreRequisite(
+            "FeatGroupAbjurationAdept", FAMILY, ValidatorsFeat.IsLevel4, [.. groupFeats]);
+
+        abjurationAdeptGroup.mustCastSpellsPrerequisite = !Main.Settings.DisableCastSpellPreRequisitesOnModFeats;
+
+        return abjurationAdeptGroup;
+    }
+
+    private sealed class MagicEffectFinishedByMeProtectiveWard(
+        // ReSharper disable once SuggestBaseTypeForParameterInConstructor
+        FeatureDefinition featureProtectiveWard) : IMagicEffectFinishedByMe
+    {
+        private const string ProtectiveWard = "ProtectiveWard";
+        private const int RangeInCells = 6;
+
+        public IEnumerator OnMagicEffectFinishedByMe(
+            CharacterAction action,
+            GameLocationCharacter attacker,
+            List<GameLocationCharacter> targets)
+        {
+            // only casts that expend a spell slot: no cantrips, rituals, invocations, items or free casts
+            if (action is not CharacterActionCastSpell actionCastSpell ||
+                actionCastSpell.Countered ||
+                actionCastSpell.ExecutionFailed ||
+                actionCastSpell.ActionId is not (
+                    ActionDefinitions.Id.CastMain or
+                    ActionDefinitions.Id.CastBonus or
+                    ActionDefinitions.Id.CastReaction or
+                    ActionDefinitions.Id.CastReadied or
+                    (ActionDefinitions.Id)ExtraActionId.CastQuickened))
+            {
+                yield break;
+            }
+
+            var activeSpell = actionCastSpell.ActiveSpell;
+
+            if (activeSpell.SchoolOfMagic != SchoolAbjuration ||
+                activeSpell.SlotLevel <= 0 ||
+                activeSpell.SpellRepertoire?.SpellCastingFeature.SpellCastingOrigin is not (
+                    FeatureDefinitionCastSpell.CastingOrigin.Class or
+                    FeatureDefinitionCastSpell.CastingOrigin.Subclass))
+            {
+                yield break;
+            }
+
+            var rulesetAttacker = attacker.RulesetCharacter;
+
+            if (rulesetAttacker is not { IsDeadOrDyingOrUnconscious: false })
+            {
+                yield break;
+            }
+
+            var tempHitPoints = 2 * activeSpell.SlotLevel;
+            var locationCharacterService = ServiceRepository.GetService<IGameLocationCharacterService>();
+
+            // you first, then allies you can see within 30 feet, closest first
+            var candidates = new List<GameLocationCharacter> { attacker };
+
+            candidates.AddRange(locationCharacterService.PartyCharacters
+                .Union(locationCharacterService.GuestCharacters)
+                .Where(x =>
+                    x != attacker &&
+                    x.RulesetCharacter is { IsDeadOrDyingOrUnconscious: false } &&
+                    attacker.IsWithinRange(x, RangeInCells) &&
+                    attacker.CanPerceiveTarget(x))
+                .OrderBy(x => DistanceCalculation.GetDistanceFromCharacters(attacker, x)));
+
+            GameLocationCharacter selectedTarget = null;
+
+            if (candidates.Count == 1)
+            {
+                selectedTarget = attacker;
+            }
+            else
+            {
+                foreach (var candidate in candidates)
+                {
+                    yield return attacker.MyReactToDoNothing(
+                        ExtraActionId.DoNothingFree,
+                        attacker,
+                        ProtectiveWard,
+                        "CustomReactionProtectiveWardDescription".Formatted(
+                            Category.Reaction, tempHitPoints.ToString(), candidate.Name),
+                        () => selectedTarget = candidate);
+
+                    if (selectedTarget != null)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            if (selectedTarget == null)
+            {
+                yield break;
+            }
+
+            selectedTarget.RulesetCharacter.ReceiveTemporaryHitPoints(
+                tempHitPoints, DurationType.UntilLongRest, 0, TurnOccurenceType.StartOfTurn, rulesetAttacker.Guid);
+
+            EffectHelpers.StartVisualEffect(
+                selectedTarget, selectedTarget,
+                DatabaseHelper.FeatureDefinitionPowers.PowerTraditionCourtMageSpellShield,
+                EffectHelpers.EffectType.Caster);
+
+            rulesetAttacker.LogCharacterUsedFeature(
+                featureProtectiveWard,
+                "Feedback/&ProtectiveWardTemporaryHitPoints",
+                true,
+                (ConsoleStyleDuplet.ParameterType.Player, selectedTarget.Name),
+                (ConsoleStyleDuplet.ParameterType.Positive, tempHitPoints.ToString()));
+        }
+    }
+
+    #endregion
 
     #region Evocation Adept
 
