@@ -373,6 +373,7 @@ public static partial class Tabletop2024Context
     {
         var domains = new[]
         {
+            ("DomainArcana", "FeatureDomainArcanaPotentSpellcasting", string.Empty),
             ("DomainDefiler", "AdditionalDamageDomainDefilerDivineStrike", string.Empty),
             ("DomainLife", "AdditionalDamageDomainLifeDivineStrike", string.Empty),
             ("DomainMischief", "AdditionalDamageDomainMischiefDivineStrike", DamageTypePsychic),
