@@ -282,6 +282,44 @@ public static class GameLocationCharacterExtensions
         }
     }
 
+    internal static IEnumerator MyReactToSelectOption(
+        this GameLocationCharacter character,
+        GameLocationCharacter waiter,
+        string type,
+        string stringParameter,
+        List<(string label, bool available)> options,
+        Action<int> reactionValidated,
+        int defaultOption = 0,
+        GameLocationBattleManager battleManager = null)
+    {
+        var actionManager = ServiceRepository.GetService<IGameLocationActionService>() as GameLocationActionManager;
+
+        battleManager ??= ServiceRepository.GetService<IGameLocationBattleService>() as GameLocationBattleManager;
+
+        if (!actionManager || !battleManager)
+        {
+            yield break;
+        }
+
+        var reactionParams = new CharacterActionParams(character, (Id)ExtraActionId.DoNothingFree)
+        {
+            StringParameter = stringParameter
+        };
+        var reactionRequest = new ReactionRequestSelectOption(type, reactionParams, options, defaultOption);
+        var count = actionManager.PendingReactionRequestGroups.Count;
+
+        actionManager.AddInterruptRequest(reactionRequest);
+
+        yield return battleManager.WaitForReactions(waiter, actionManager, count);
+
+        var option = reactionRequest.SelectedSubOption;
+
+        if (reactionParams.ReactionValidated && option >= 0 && option < options.Count && options[option].available)
+        {
+            reactionValidated(option);
+        }
+    }
+
     internal static IEnumerator MyReactToSpendPower(
         this GameLocationCharacter character,
         RulesetUsablePower usablePower,
