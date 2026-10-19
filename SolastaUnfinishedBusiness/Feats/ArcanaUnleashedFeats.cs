@@ -27,11 +27,72 @@ internal static class ArcanaUnleashedFeats
         var abjurationAdeptGroup = BuildAbjurationAdept(feats);
         var conjurationAdeptGroup = BuildConjurationAdept(feats);
         var evocationAdeptGroup = BuildEvocationAdept(feats);
+        var necromancyAdeptGroup = BuildNecromancyAdept(feats);
 
         GroupFeats.FeatGroupSpellCombat.AddFeats(
             abjurationAdeptGroup,
             conjurationAdeptGroup,
-            evocationAdeptGroup);
+            evocationAdeptGroup,
+            necromancyAdeptGroup);
+    }
+
+    // only casts that expend a spell slot: no cantrips, rituals, invocations, items or free casts
+    private static bool IsSpellSlotCast(CharacterAction action, string schoolOfMagic, out RulesetEffectSpell activeSpell)
+    {
+        activeSpell = null;
+
+        if (action is not CharacterActionCastSpell actionCastSpell ||
+            actionCastSpell.Countered ||
+            actionCastSpell.ExecutionFailed ||
+            actionCastSpell.ActionId is not (
+                ActionDefinitions.Id.CastMain or
+                ActionDefinitions.Id.CastBonus or
+                ActionDefinitions.Id.CastReaction or
+                ActionDefinitions.Id.CastReadied or
+                (ActionDefinitions.Id)ExtraActionId.CastQuickened))
+        {
+            return false;
+        }
+
+        activeSpell = actionCastSpell.ActiveSpell;
+
+        return activeSpell.SchoolOfMagic == schoolOfMagic &&
+               activeSpell.SlotLevel > 0 &&
+               activeSpell.SpellRepertoire?.SpellCastingFeature.SpellCastingOrigin is
+                   FeatureDefinitionCastSpell.CastingOrigin.Class or
+                   FeatureDefinitionCastSpell.CastingOrigin.Subclass;
+    }
+
+    // same die selection as vanilla RulesetCharacterHero.RollHitDie: the largest die type still available
+    private static DieType ExpendHitDie(RulesetCharacterHero hero)
+    {
+        var dieType = DieType.D1;
+        var maxValue = 0;
+
+        foreach (var hitDiceGroup in hero.ClassesHistory.GroupBy(x => x.HitDice))
+        {
+            hero.spentHitDice.TryGetValue(hitDiceGroup.Key, out var spent);
+
+            var value = DiceMaxValue[(int)hitDiceGroup.Key];
+
+            if (spent >= hitDiceGroup.Count() || value <= maxValue)
+            {
+                continue;
+            }
+
+            dieType = hitDiceGroup.Key;
+            maxValue = value;
+        }
+
+        if (dieType == DieType.D1)
+        {
+            return dieType;
+        }
+
+        hero.spentHitDice.TryGetValue(dieType, out var alreadySpent);
+        hero.spentHitDice[dieType] = alreadySpent + 1;
+
+        return dieType;
     }
 
     #region Abjuration Adept
@@ -110,27 +171,7 @@ internal static class ArcanaUnleashedFeats
             GameLocationCharacter attacker,
             List<GameLocationCharacter> targets)
         {
-            // only casts that expend a spell slot: no cantrips, rituals, invocations, items or free casts
-            if (action is not CharacterActionCastSpell actionCastSpell ||
-                actionCastSpell.Countered ||
-                actionCastSpell.ExecutionFailed ||
-                actionCastSpell.ActionId is not (
-                    ActionDefinitions.Id.CastMain or
-                    ActionDefinitions.Id.CastBonus or
-                    ActionDefinitions.Id.CastReaction or
-                    ActionDefinitions.Id.CastReadied or
-                    (ActionDefinitions.Id)ExtraActionId.CastQuickened))
-            {
-                yield break;
-            }
-
-            var activeSpell = actionCastSpell.ActiveSpell;
-
-            if (activeSpell.SchoolOfMagic != SchoolAbjuration ||
-                activeSpell.SlotLevel <= 0 ||
-                activeSpell.SpellRepertoire?.SpellCastingFeature.SpellCastingOrigin is not (
-                    FeatureDefinitionCastSpell.CastingOrigin.Class or
-                    FeatureDefinitionCastSpell.CastingOrigin.Subclass))
+            if (!IsSpellSlotCast(action, SchoolAbjuration, out var activeSpell))
             {
                 yield break;
             }
@@ -508,37 +549,170 @@ internal static class ArcanaUnleashedFeats
 
             effectForm.DamageForm.BonusDamage += _bonusDamage;
         }
+    }
 
-        // same die selection as vanilla RulesetCharacterHero.RollHitDie: the largest die type still available
-        private static DieType ExpendHitDie(RulesetCharacterHero hero)
+    #endregion
+
+    #region Necromancy Adept
+
+    private static FeatDefinition BuildNecromancyAdept(List<FeatDefinition> feats)
+    {
+        const string NAME = "FeatNecromancyAdept";
+        const string FAMILY = "NecromancyAdept";
+
+        // spells are only added to the repertoire once the caster has spell slots of the spell level
+        var autoPreparedSpells = FeatureDefinitionAutoPreparedSpellsBuilder
+            .Create($"AutoPreparedSpells{NAME}")
+            .SetGuiPresentationNoContent(true)
+            .AddCustomSubFeatures(
+                ValidateRepertoireForAutoprepared.AnyClassOrSubclass,
+                AutoPreparedSpellsUpToMaxSpellSlotLevel.Marker)
+            .SetPreparedSpellGroups(
+                BuildSpellGroup(0,
+                    InflictWounds,
+                    RayOfEnfeeblement,
+                    VampiricTouch,
+                    Blight,
+                    RaiseDead))
+            .SetSpellcastingClass(null)
+            .SetAutoTag(FAMILY)
+            .AddToDB();
+
+        var featureLifeManipulation = FeatureDefinitionBuilder
+            .Create($"Feature{NAME}LifeManipulation")
+            .SetGuiPresentation(Category.Feature)
+            .AddToDB();
+
+        featureLifeManipulation.AddCustomSubFeatures(
+            new MagicEffectFinishedByMeLifeManipulation(featureLifeManipulation));
+
+        var attributeIncreases = new List<(FeatureDefinition, string)>
         {
-            var dieType = DieType.D1;
-            var maxValue = 0;
+            (AttributeModifierCreed_Of_Pakri, "Int"),
+            (AttributeModifierCreed_Of_Maraike, "Wis"),
+            (AttributeModifierCreed_Of_Solasta, "Cha")
+        };
 
-            foreach (var hitDiceGroup in hero.ClassesHistory.GroupBy(x => x.HitDice))
+        var groupFeats = new List<FeatDefinition>();
+
+        foreach (var (attributeIncrease, postfix) in attributeIncreases)
+        {
+            groupFeats.Add(FeatDefinitionWithPrerequisitesBuilder
+                .Create($"{NAME}{postfix}")
+                .SetGuiPresentation(Category.Feat)
+                .SetFeatures(attributeIncrease, autoPreparedSpells, featureLifeManipulation)
+                .SetValidators(ValidatorsFeat.IsLevel4)
+                .SetMustCastSpellsPrerequisite()
+                .SetFeatFamily(FAMILY)
+                .AddToDB());
+        }
+
+        feats.AddRange(groupFeats);
+
+        var necromancyAdeptGroup = GroupFeats.MakeGroupWithPreRequisite(
+            "FeatGroupNecromancyAdept", FAMILY, ValidatorsFeat.IsLevel4, [.. groupFeats]);
+
+        necromancyAdeptGroup.mustCastSpellsPrerequisite = !Main.Settings.DisableCastSpellPreRequisitesOnModFeats;
+
+        return necromancyAdeptGroup;
+    }
+
+    private sealed class MagicEffectFinishedByMeLifeManipulation(
+        // ReSharper disable once SuggestBaseTypeForParameterInConstructor
+        FeatureDefinition featureLifeManipulation) : IMagicEffectFinishedByMe
+    {
+        private const string LifeManipulation = "LifeManipulation";
+
+        public IEnumerator OnMagicEffectFinishedByMe(
+            CharacterAction action,
+            GameLocationCharacter attacker,
+            List<GameLocationCharacter> targets)
+        {
+            if (!IsSpellSlotCast(action, SchoolNecromancy, out var activeSpell))
             {
-                hero.spentHitDice.TryGetValue(hitDiceGroup.Key, out var spent);
+                yield break;
+            }
 
-                var value = DiceMaxValue[(int)hitDiceGroup.Key];
+            var rulesetAttacker = attacker.RulesetCharacter;
 
-                if (spent >= hitDiceGroup.Count() || value <= maxValue)
+            if (rulesetAttacker is not { IsDeadOrDyingOrUnconscious: false })
+            {
+                yield break;
+            }
+
+            var rulesetHero = rulesetAttacker.GetOriginalHero();
+
+            if (rulesetHero == null)
+            {
+                yield break;
+            }
+
+            var remainingHitDice = rulesetHero.RemainingHitDiceCount();
+
+            if (remainingHitDice <= 0)
+            {
+                yield break;
+            }
+
+            var slotLevel = activeSpell.SlotLevel;
+            var hitDiceToSpend = 0;
+
+            // the number of dice is chosen before rolling, all in one prompt where the option index is the dice count
+            yield return attacker.MyReactToSelectOption(
+                attacker,
+                LifeManipulation,
+                "CustomReactionLifeManipulationDescription".Formatted(
+                    Category.Reaction, remainingHitDice.ToString(), slotLevel.ToString()),
+                [
+                    (Gui.Localize("Reaction/&CustomReactionLifeManipulationZeroDice"), true),
+                    (Gui.Localize("Reaction/&CustomReactionLifeManipulationOneDie"), true),
+                    (Gui.Localize("Reaction/&CustomReactionLifeManipulationTwoDice"), remainingHitDice >= 2)
+                ],
+                option => hitDiceToSpend = option);
+
+            if (hitDiceToSpend == 0)
+            {
+                yield break;
+            }
+
+            var rolls = new List<string>();
+            var total = 0;
+
+            for (var i = 0; i < hitDiceToSpend; i++)
+            {
+                var dieType = ExpendHitDie(rulesetHero);
+
+                if (dieType == DieType.D1)
                 {
-                    continue;
+                    break;
                 }
 
-                dieType = hitDiceGroup.Key;
-                maxValue = value;
+                var roll = RollDie(dieType, AdvantageType.None, out _, out _);
+
+                rulesetAttacker.ShowDieRoll(dieType, roll, title: featureLifeManipulation.GuiPresentation.Title);
+                rolls.Add($"{Gui.FormatDieTitle(dieType)}:{roll}");
+                total += roll;
             }
 
-            if (dieType == DieType.D1)
+            if (rolls.Count == 0)
             {
-                return dieType;
+                yield break;
             }
 
-            hero.spentHitDice.TryGetValue(dieType, out var alreadySpent);
-            hero.spentHitDice[dieType] = alreadySpent + 1;
+            var healing = total + slotLevel;
 
-            return dieType;
+            rulesetAttacker.LogCharacterActivatesAbility(
+                featureLifeManipulation.GuiPresentation.Title,
+                "Feedback/&LifeManipulationHitDiceRolled",
+                extra:
+                [
+                    (ConsoleStyleDuplet.ParameterType.AbilityInfo, string.Join(", ", rolls)),
+                    (ConsoleStyleDuplet.ParameterType.Positive, slotLevel.ToString()),
+                    (ConsoleStyleDuplet.ParameterType.Positive, healing.ToString())
+                ]);
+
+            EffectHelpers.StartVisualEffect(attacker, attacker, CureWounds, EffectHelpers.EffectType.Effect);
+            rulesetAttacker.ReceiveHealing(healing, true, rulesetAttacker.Guid);
         }
     }
 
