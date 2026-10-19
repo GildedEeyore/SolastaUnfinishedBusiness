@@ -172,30 +172,19 @@ internal static class ArcanaUnleashedFeats
 
             var hitDiceToSpend = 0;
 
-            // the number of dice is chosen before rolling
-            if (remainingHitDice >= 2)
-            {
-                yield return attacker.MyReactToDoNothing(
-                    ExtraActionId.DoNothingFree,
-                    attacker,
-                    $"{FueledEvocation}TwoDice",
-                    "CustomReactionFueledEvocationTwoDiceDescription".Formatted(
-                        Category.Reaction, remainingHitDice.ToString()),
-                    () => hitDiceToSpend = 2,
-                    battleManager: battleManager);
-            }
-
-            if (hitDiceToSpend == 0)
-            {
-                yield return attacker.MyReactToDoNothing(
-                    ExtraActionId.DoNothingFree,
-                    attacker,
-                    $"{FueledEvocation}OneDie",
-                    "CustomReactionFueledEvocationOneDieDescription".Formatted(
-                        Category.Reaction, remainingHitDice.ToString()),
-                    () => hitDiceToSpend = 1,
-                    battleManager: battleManager);
-            }
+            // the number of dice is chosen before rolling, all in one prompt where the option index is the dice count
+            yield return attacker.MyReactToSelectOption(
+                attacker,
+                FueledEvocation,
+                "CustomReactionFueledEvocationDescription".Formatted(
+                    Category.Reaction, remainingHitDice.ToString()),
+                [
+                    (Gui.Localize("Reaction/&CustomReactionFueledEvocationZeroDice"), true),
+                    (Gui.Localize("Reaction/&CustomReactionFueledEvocationOneDie"), true),
+                    (Gui.Localize("Reaction/&CustomReactionFueledEvocationTwoDice"), remainingHitDice >= 2)
+                ],
+                option => hitDiceToSpend = option,
+                battleManager: battleManager);
 
             if (hitDiceToSpend == 0)
             {
