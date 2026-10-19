@@ -52,7 +52,7 @@ public static class CharacterReactionItemPatcher
         {
             var request = __instance.ReactionRequest;
             var size = request is ReactionRequestWarcaster or ReactionRequestSpendBundlePower
-                or ReactionRequestSelectSmiteSpell
+                or ReactionRequestSelectSmiteSpell or ReactionRequestSelectOption
                 ? 400
                 : 290;
 
@@ -162,6 +162,9 @@ public static class CharacterReactionItemPatcher
                     break;
                 case ReactionRequestSelectSmiteSpell smiteRequest:
                     instance.BindSmite(smiteRequest, slotLevel, interactable, subitemSelected);
+                    break;
+                case ReactionRequestSelectOption selectOptionRequest:
+                    instance.BindSelectOption(selectOptionRequest, slotLevel, interactable, subitemSelected);
                     break;
                 case ReactionRequestSpendBundlePower bundlePowerRequest:
                     instance.BindPowerBundle(bundlePowerRequest, slotLevel, interactable, subitemSelected);
