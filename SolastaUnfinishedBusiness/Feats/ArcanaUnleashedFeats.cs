@@ -165,21 +165,18 @@ internal static class ArcanaUnleashedFeats
             }
             else
             {
-                foreach (var candidate in candidates)
-                {
-                    yield return attacker.MyReactToDoNothing(
-                        ExtraActionId.DoNothingFree,
-                        attacker,
-                        ProtectiveWard,
-                        "CustomReactionProtectiveWardDescription".Formatted(
-                            Category.Reaction, tempHitPoints.ToString(), candidate.Name),
-                        () => selectedTarget = candidate);
-
-                    if (selectedTarget != null)
-                    {
-                        break;
-                    }
-                }
+                // one prompt listing you and every eligible ally
+                yield return attacker.MyReactToSelectOption(
+                    attacker,
+                    ProtectiveWard,
+                    "CustomReactionProtectiveWardDescription".Formatted(
+                        Category.Reaction, tempHitPoints.ToString()),
+                    candidates
+                        .Select(x => (x == attacker
+                            ? "CustomReactionProtectiveWardSelf".Formatted(Category.Reaction, x.Name)
+                            : x.Name, true))
+                        .ToList(),
+                    option => selectedTarget = candidates[option]);
             }
 
             if (selectedTarget == null)
