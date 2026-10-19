@@ -25,10 +25,12 @@ internal static class ArcanaUnleashedFeats
     internal static void CreateFeats([NotNull] List<FeatDefinition> feats)
     {
         var abjurationAdeptGroup = BuildAbjurationAdept(feats);
+        var conjurationAdeptGroup = BuildConjurationAdept(feats);
         var evocationAdeptGroup = BuildEvocationAdept(feats);
 
         GroupFeats.FeatGroupSpellCombat.AddFeats(
             abjurationAdeptGroup,
+            conjurationAdeptGroup,
             evocationAdeptGroup);
     }
 
@@ -196,6 +198,109 @@ internal static class ArcanaUnleashedFeats
                 true,
                 (ConsoleStyleDuplet.ParameterType.Player, selectedTarget.Name),
                 (ConsoleStyleDuplet.ParameterType.Positive, tempHitPoints.ToString()));
+        }
+    }
+
+    #endregion
+
+    #region Conjuration Adept
+
+    private static FeatDefinition BuildConjurationAdept(List<FeatDefinition> feats)
+    {
+        const string NAME = "FeatConjurationAdept";
+        const string FAMILY = "ConjurationAdept";
+
+        // spells are only added to the repertoire once the caster has spell slots of the spell level
+        var autoPreparedSpells = FeatureDefinitionAutoPreparedSpellsBuilder
+            .Create($"AutoPreparedSpells{NAME}")
+            .SetGuiPresentationNoContent(true)
+            .AddCustomSubFeatures(
+                ValidateRepertoireForAutoprepared.AnyClassOrSubclass,
+                AutoPreparedSpellsUpToMaxSpellSlotLevel.Marker)
+            .SetPreparedSpellGroups(
+                BuildSpellGroup(0,
+                    Entangle,
+                    MistyStep,
+                    ConjureAnimals,
+                    DimensionDoor,
+                    ConjureElemental))
+            .SetSpellcastingClass(null)
+            .SetAutoTag(FAMILY)
+            .AddToDB();
+
+        var attributeIncreases = new List<(FeatureDefinition, string, string)>
+        {
+            (AttributeModifierCreed_Of_Pakri, "Int", AttributeDefinitions.Intelligence),
+            (AttributeModifierCreed_Of_Maraike, "Wis", AttributeDefinitions.Wisdom),
+            (AttributeModifierCreed_Of_Solasta, "Cha", AttributeDefinitions.Charisma)
+        };
+
+        var groupFeats = new List<FeatDefinition>();
+
+        foreach (var (attributeIncrease, postfix, attributeName) in attributeIncreases)
+        {
+            // the bonus uses the ability this feat increased so each variant needs its own feature
+            var featurePersistentConjuration = FeatureDefinitionBuilder
+                .Create($"Feature{NAME}PersistentConjuration{postfix}")
+                .SetGuiPresentation($"Feature{NAME}PersistentConjuration", Category.Feature)
+                .AddToDB();
+
+            featurePersistentConjuration.AddCustomSubFeatures(
+                new RollSavingCheckInitiatedPersistentConjuration(featurePersistentConjuration, attributeName));
+
+            groupFeats.Add(FeatDefinitionWithPrerequisitesBuilder
+                .Create($"{NAME}{postfix}")
+                .SetGuiPresentation(Category.Feat)
+                .SetFeatures(attributeIncrease, autoPreparedSpells, featurePersistentConjuration)
+                .SetValidators(ValidatorsFeat.IsLevel4)
+                .SetMustCastSpellsPrerequisite()
+                .SetFeatFamily(FAMILY)
+                .AddToDB());
+        }
+
+        feats.AddRange(groupFeats);
+
+        var conjurationAdeptGroup = GroupFeats.MakeGroupWithPreRequisite(
+            "FeatGroupConjurationAdept", FAMILY, ValidatorsFeat.IsLevel4, [.. groupFeats]);
+
+        conjurationAdeptGroup.mustCastSpellsPrerequisite = !Main.Settings.DisableCastSpellPreRequisitesOnModFeats;
+
+        return conjurationAdeptGroup;
+    }
+
+    // only called from concentration checks
+    private sealed class RollSavingCheckInitiatedPersistentConjuration(
+        // ReSharper disable once SuggestBaseTypeForParameterInConstructor
+        FeatureDefinition featurePersistentConjuration,
+        string attributeName) : IRollSavingCheckInitiated
+    {
+        public void OnRollSavingCheckInitiated(
+            RulesetCharacter defender,
+            int saveDC,
+            string damageType,
+            ref ActionModifier actionModifier,
+            ref int modifier)
+        {
+            var concentratedSpell = defender.ConcentratedSpell;
+
+            if (concentratedSpell == null ||
+                concentratedSpell.SpellDefinition.SchoolOfMagic !=
+                DatabaseHelper.SchoolOfMagicDefinitions.SchoolConjuration.Name)
+            {
+                return;
+            }
+
+            var bonus = AttributeDefinitions.ComputeAbilityScoreModifier(defender.TryGetAttributeValue(attributeName));
+
+            if (bonus == 0)
+            {
+                return;
+            }
+
+            modifier += bonus;
+            actionModifier.SavingThrowModifierTrends.Add(
+                new TrendInfo(bonus, FeatureSourceType.CharacterFeature, featurePersistentConjuration.Name,
+                    featurePersistentConjuration));
         }
     }
 
