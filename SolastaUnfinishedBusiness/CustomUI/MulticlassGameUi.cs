@@ -6,6 +6,7 @@ using JetBrains.Annotations;
 using SolastaUnfinishedBusiness.Api.Helpers;
 using SolastaUnfinishedBusiness.Api.LanguageExtensions;
 using SolastaUnfinishedBusiness.Models;
+using SolastaUnfinishedBusiness.Subclasses;
 using UnityEngine;
 using UnityEngine.UI;
 using static RuleDefinitions;
@@ -525,6 +526,18 @@ internal static class MulticlassGameUi
                      select spell)
             {
                 allSpells.Add(spell);
+            }
+
+            //PATCH: Theurgy Arcane Initiate allows any cleric spell once all domain spells are in the spellbook
+            if (spellLevel > 0 &&
+                !pointPool?.spellListOverride &&
+                LevelUpHelper.GetSelectedClass(localHeroCharacter) ==
+                Api.DatabaseHelper.CharacterClassDefinitions.Wizard)
+            {
+                allSpells.AddRange(WizardTheurgy.GetArcaneInitiateClericSpells(localHeroCharacter)
+                    .Where(spell => spell.SpellLevel == spellLevel && !allSpells.Contains(spell))
+                    .Where(spell => !ritualOnly || spell.Ritual)
+                    .ToList());
             }
         }
 

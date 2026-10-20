@@ -29,6 +29,13 @@ internal static class SubclassesContext
         get;
     } = [];
 
+    // subclasses switched on and off together through one settings entry
+    private static Dictionary<CharacterSubclassDefinition,
+        (FeatureDefinitionSubclassChoice, CharacterSubclassDefinition[])> SubclassGroups
+    {
+        get;
+    } = [];
+
     internal static void Load()
     {
         // kept for backward compatibility
@@ -45,6 +52,12 @@ internal static class SubclassesContext
         {
             LoadSubclass(abstractSubClassInstance);
         }
+
+        // Theurgy builds one wizard subclass per cleric domain, so it must load after all domains
+        WizardTheurgy.Load();
+        SubclassGroups.Add(WizardTheurgy.SubclassToggle,
+            (FeatureDefinitionSubclassChoices.SubclassChoiceWizardArcaneTraditions, WizardTheurgy.Variants));
+        KlassListContextTab[CharacterClassDefinitions.Wizard].RegisterSubclass(WizardTheurgy.SubclassToggle);
 
         // settings paring
         var subclasses = Main.Settings.KlassListSubclassEnabled
@@ -234,7 +247,24 @@ internal static class SubclassesContext
             var klass = Klass.Name;
             var subclass = characterSubclassDefinition.Name;
 
-            if (SubclassesChoiceList.TryGetValue(characterSubclassDefinition, out var choiceList))
+            if (SubclassGroups.TryGetValue(characterSubclassDefinition, out var subclassGroup))
+            {
+                var (groupChoiceList, groupSubclasses) = subclassGroup;
+                var enabled = Main.Settings.KlassListSubclassEnabled[klass].Contains(subclass);
+
+                foreach (var groupSubclass in groupSubclasses)
+                {
+                    if (enabled)
+                    {
+                        groupChoiceList.Subclasses.TryAdd(groupSubclass.Name);
+                    }
+                    else
+                    {
+                        groupChoiceList.Subclasses.Remove(groupSubclass.Name);
+                    }
+                }
+            }
+            else if (SubclassesChoiceList.TryGetValue(characterSubclassDefinition, out var choiceList))
             {
                 if (Main.Settings.KlassListSubclassEnabled[klass].Contains(subclass))
                 {

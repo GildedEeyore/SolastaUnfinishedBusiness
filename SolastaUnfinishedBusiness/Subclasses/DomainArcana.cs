@@ -175,20 +175,17 @@ public sealed class DomainArcana : AbstractSubclass
     internal static void GrantMagicalMasterySpells(RulesetCharacterHero hero)
     {
         var selectedClass = LevelUpHelper.GetSelectedClass(hero);
-
-        if (selectedClass != Cleric)
-        {
-            return;
-        }
-
         var selectedSubclass = LevelUpHelper.GetSelectedSubclass(hero);
 
-        if (!selectedSubclass || selectedSubclass.Name != Name)
+        // also granted to a Theurgy wizard of the Arcana domain
+        if (!selectedSubclass ||
+            !(selectedClass == Cleric && selectedSubclass.Name == Name) &&
+            !(selectedClass == Wizard && WizardTheurgy.IsVariantOf(selectedSubclass, Name)))
         {
             return;
         }
 
-        var spellRepertoire = hero.GetClassSpellRepertoire(Cleric);
+        var spellRepertoire = hero.GetClassSpellRepertoire(selectedClass);
 
         if (spellRepertoire == null)
         {
@@ -269,7 +266,15 @@ public sealed class DomainArcana : AbstractSubclass
                 yield break;
             }
 
-            var clericLevel = rulesetAttacker.GetClassLevel(Cleric);
+            // cleric level, or wizard level for a Theurgy wizard of the Arcana domain
+            var originClass = rulesetAttacker.UsablePowers
+                .FirstOrDefault(x => x.PowerDefinition == powerModifyMagic)?.OriginClass;
+            var clericLevel = originClass ? rulesetAttacker.GetClassLevel(originClass) : 0;
+
+            if (clericLevel == 0)
+            {
+                clericLevel = rulesetAttacker.GetClassLevel(Cleric);
+            }
             GameLocationCharacter selectedTarget = null;
 
             // one prompt listing every eligible target of the spell

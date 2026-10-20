@@ -10,6 +10,7 @@ using SolastaUnfinishedBusiness.CustomUI;
 using SolastaUnfinishedBusiness.Feats;
 using SolastaUnfinishedBusiness.Interfaces;
 using SolastaUnfinishedBusiness.Models;
+using SolastaUnfinishedBusiness.Subclasses;
 using static RuleDefinitions;
 using static SolastaUnfinishedBusiness.Api.DatabaseHelper.CharacterClassDefinitions;
 using static SolastaUnfinishedBusiness.Api.DatabaseHelper.ItemDefinitions;
@@ -954,7 +955,21 @@ internal static class LevelUpHelper
             .Where(x => x.Key.Contains(SelectedClass.Name))
             .SelectMany(x => x.Value);
 
-        internal HashSet<SpellDefinition> AllowedSpells => CacheAllowedSpells(SelectedClassFeatures);
+        internal HashSet<SpellDefinition> AllowedSpells
+        {
+            get
+            {
+                var allowedSpells = CacheAllowedSpells(SelectedClassFeatures);
+
+                //PATCH: Theurgy Arcane Initiate allows any cleric spell once all domain spells are in the spellbook
+                if (SelectedClass == Wizard)
+                {
+                    allowedSpells.UnionWith(WizardTheurgy.GetArcaneInitiateClericSpells(Hero));
+                }
+
+                return allowedSpells;
+            }
+        }
 
         internal HashSet<SpellDefinition> AllowedAutoPreparedSpells =>
             CacheAllowedAutoPreparedSpells(SelectedClassFeatures);
