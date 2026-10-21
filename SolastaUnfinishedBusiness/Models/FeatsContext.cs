@@ -41,6 +41,12 @@ internal static class FeatsContext
     {
         var feats = new List<FeatDefinition>();
 
+        // Fey Touched replaced Fey Teleportation so keep it enabled for settings that had the old group
+        if (Main.Settings.FeatEnabled.Remove("FeatGroupFeyTeleport"))
+        {
+            Main.Settings.FeatEnabled.TryAdd("FeatGroupFeyTouched");
+        }
+
         // generate feats here and fill the list
         ArcanaUnleashedFeats.CreateFeats(feats);
         ArmorFeats.CreateFeats(feats);
