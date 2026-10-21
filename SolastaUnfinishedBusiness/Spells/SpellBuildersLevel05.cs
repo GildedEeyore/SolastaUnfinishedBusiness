@@ -1521,4 +1521,26 @@ internal static partial class SpellBuilders
     }
 
     #endregion
+
+    #region Wall of Force
+
+    internal static SpellDefinition BuildWallOfForce()
+    {
+        // vanilla ships Wall of Force flagged as not implemented, so reuse its definition, proxy and particles
+        var spell = WallOfForce;
+
+        spell.contentPack = CeContentPackContext.CeContentPack; // required otherwise it messes up spells UI
+        spell.implemented = true;
+        spell.materialComponentType = MaterialComponentType.Mundane;
+        spell.specificMaterialComponentConsumed = false;
+
+        // vanilla MoveBlocker topology is never processed by the game; see GameLocationEnvironmentManagerPatcher
+        // and GameLocationPositioningManagerPatcher for the code that makes it block movement
+        spell.EffectDescription.EffectForms.Add(
+            EffectFormBuilder.TopologyForm(TopologyForm.Type.ProjectileBlocker, true));
+
+        return spell;
+    }
+
+    #endregion
 }
