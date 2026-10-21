@@ -527,6 +527,17 @@ internal static class LevelUpHelper
         characterBuildingManager.GrantFeatures(hero, grantedFeatures, $"02Race{characterLevel}", false);
     }
 
+    // feat repertoires can learn spells from several point pools, each one restricted to its own spell levels
+    internal static bool IsSpellLevelOutsideFeatPool(
+        FeatureDefinitionCastSpell spellFeature, PointPool pointPool, int spellLevel)
+    {
+        return spellFeature &&
+               spellFeature.HasSubFeatureOfType<FeatHelpers.SpellTag>() &&
+               pointPool is { MaxSpellLevel: > 0 } &&
+               spellLevel > 0 &&
+               (spellLevel < pointPool.MinSpellLevel || spellLevel > pointPool.MaxSpellLevel);
+    }
+
     internal static void GrantSpellsOrCantripsFromFeatCastSpell(
         CharacterBuildingManager characterBuildingManager,
         [NotNull] RulesetCharacterHero hero)
@@ -579,11 +590,19 @@ internal static class LevelUpHelper
                     hero.GrantSpell(spell, featureDefinitionCastSpell);
                 }
             }
-            else if (heroBuildingData.AcquiredSpells.TryGetValue(finalTag, out var spells))
+            else
             {
-                foreach (var spell in spells)
+                foreach (var poolTag in spellTag.PoolTags)
                 {
-                    hero.GrantSpell(spell, featureDefinitionCastSpell);
+                    if (!heroBuildingData.AcquiredSpells.TryGetValue(classTag + poolTag + poolTag, out var spells))
+                    {
+                        continue;
+                    }
+
+                    foreach (var spell in spells)
+                    {
+                        hero.GrantSpell(spell, featureDefinitionCastSpell);
+                    }
                 }
             }
         }
@@ -632,7 +651,8 @@ internal static class LevelUpHelper
             {
                 // we want repertoires from feats to always come after others
                 if (a.SpellCastingFeature.Name.Contains(OtherFeats.FeatMagicInitiateTag) ||
-                    a.SpellCastingFeature.Name.Contains(OtherFeats.FeatSpellSniperTag))
+                    a.SpellCastingFeature.Name.Contains(OtherFeats.FeatSpellSniperTag) ||
+                    a.SpellCastingFeature.Name.Contains(ArcanaUnleashedFeats.FeatMagicConnoisseurTag))
                 {
                     return 1;
                 }
@@ -645,7 +665,8 @@ internal static class LevelUpHelper
             {
                 // we want repertoires from feats to always come after others
                 if (b.SpellCastingFeature.Name.Contains(OtherFeats.FeatMagicInitiateTag) ||
-                    b.SpellCastingFeature.Name.Contains(OtherFeats.FeatSpellSniperTag))
+                    b.SpellCastingFeature.Name.Contains(OtherFeats.FeatSpellSniperTag) ||
+                    b.SpellCastingFeature.Name.Contains(ArcanaUnleashedFeats.FeatMagicConnoisseurTag))
                 {
                     return -1;
                 }

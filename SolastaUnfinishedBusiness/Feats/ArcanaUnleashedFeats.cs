@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
@@ -35,6 +36,9 @@ internal static class ArcanaUnleashedFeats
         var arcaneOmensGroup = BuildArcaneOmens(feats);
         var portalJumperGroup = BuildPortalJumper(feats);
         var spellResistantGroup = BuildSpellResistant(feats);
+
+        // listed on its own like Magic Initiate
+        BuildMagicConnoisseur(feats);
 
         GroupFeats.FeatGroupOrigin.AddFeats(
             arcaneEloquenceGroup, arcaneInfiltrator, arcaneOmensGroup, portalJumperGroup);
@@ -1193,6 +1197,159 @@ internal static class ArcanaUnleashedFeats
             EffectHelpers.StartVisualEffect(attacker, attacker, CureWounds, EffectHelpers.EffectType.Effect);
             rulesetAttacker.ReceiveHealing(healing, true, rulesetAttacker.Guid);
         }
+    }
+
+    #endregion
+
+    #region Magic Connoisseur
+
+    internal const string FeatMagicConnoisseurTag = "Connoisseur";
+
+    // class groups nested in the Magic Connoisseur group, so they don't get their own toggle in mod settings
+    internal static readonly HashSet<string> NestedFeatGroups = [];
+
+    private static FeatDefinition BuildMagicConnoisseur(List<FeatDefinition> feats)
+    {
+        const string NAME = "FeatMagicConnoisseur";
+        const string FAMILY = "MagicConnoisseur";
+        // each pool tag must end with the spell tag so level up finds this repertoire for both pools
+        const string LEVEL1_POOL_TAG = $"Level1{FeatMagicConnoisseurTag}";
+        const string LEVEL2_POOL_TAG = $"Level2{FeatMagicConnoisseurTag}";
+
+        // a 1st and a 2nd level slot recharged on a long rest to cast each spell once without a spell slot
+        var castingSlots = Enumerable.Range(1, 20)
+            .Select(level => new FeatureDefinitionCastSpell.SlotsByLevelDuplet { Slots = [1, 1], Level = level })
+            .ToList();
+
+        // same classes as Magic Initiate, as the spells come from the same list and use the same ability
+        var castSpells = new List<(FeatureDefinitionCastSpell feature, ClassHolder clazz)>
+        {
+            (DatabaseHelper.FeatureDefinitionCastSpells.CastSpellBard, ClassHolder.Bard),
+            (DatabaseHelper.FeatureDefinitionCastSpells.CastSpellCleric, ClassHolder.Cleric),
+            (DatabaseHelper.FeatureDefinitionCastSpells.CastSpellDruid, ClassHolder.Druid),
+            (DatabaseHelper.FeatureDefinitionCastSpells.CastSpellSorcerer, ClassHolder.Sorcerer),
+            (DatabaseHelper.FeatureDefinitionCastSpells.CastSpellWarlock, ClassHolder.Warlock),
+            (DatabaseHelper.FeatureDefinitionCastSpells.CastSpellWizard, ClassHolder.Wizard)
+        };
+
+        var attributeIncreases = new List<(FeatureDefinition, string)>
+        {
+            (AttributeModifierCreed_Of_Pakri, "Int"),
+            (AttributeModifierCreed_Of_Maraike, "Wis"),
+            (AttributeModifierCreed_Of_Solasta, "Cha")
+        };
+
+        var classGroups = new List<FeatDefinition>();
+        var magicInitiateNames = new List<string>();
+
+        foreach (var (classCastSpell, clazz) in castSpells)
+        {
+            var spellList = classCastSpell.SpellListDefinition;
+            var className = spellList.Name.Replace("SpellList", "");
+            var classTitle = DatabaseHelper.GetDefinition<CharacterClassDefinition>(className).FormatTitle();
+            // Magic Initiate feats are created later on so they are validated by name
+            var magicInitiateName = $"FeatMagicInitiate{className}";
+            var validateMagicInitiate = ValidateHasMagicInitiate(magicInitiateName);
+
+            magicInitiateNames.Add(magicInitiateName);
+
+            // same repertoire setup as Magic Initiate, so it also uses the class spellcasting ability
+            var castSpell = FeatureDefinitionCastSpellBuilder
+                .Create(classCastSpell, $"CastSpell{NAME}{className}")
+                .SetGuiPresentation(
+                    Gui.Format($"Feature/&CastSpell{NAME}Title", classTitle),
+                    Gui.Format($"Feature/&CastSpell{NAME}Description", classTitle))
+                .SetSpellCastingOrigin(FeatureDefinitionCastSpell.CastingOrigin.Race)
+                .SetSpellKnowledge(SpellKnowledge.Selection)
+                .SetSpellReadyness(SpellReadyness.AllKnown)
+                .SetSlotsRecharge(RechargeRate.LongRest)
+                .SetSlotsPerLevel(castingSlots)
+                .SetKnownCantrips(0, 1, FeatureDefinitionCastSpellBuilder.CasterProgression.Flat)
+                .SetKnownSpells(2, FeatureDefinitionCastSpellBuilder.CasterProgression.Flat)
+                .SetReplacedSpells(1, 0)
+                .SetUniqueLevelSlots(false)
+                .AddCustomSubFeatures(
+                    new FeatHelpers.SpellTag(FeatMagicConnoisseurTag, false, LEVEL1_POOL_TAG, LEVEL2_POOL_TAG),
+                    clazz)
+                .AddToDB();
+
+            var pointPoolLevel1 = FeatureDefinitionPointPoolBuilder
+                .Create($"PointPool{NAME}{className}Level1")
+                .SetGuiPresentationNoContent(true)
+                .SetSpellOrCantripPool(HeroDefinitions.PointsPoolType.Spell, 1, spellList, LEVEL1_POOL_TAG, 1, 1)
+                .AddToDB();
+
+            var pointPoolLevel2 = FeatureDefinitionPointPoolBuilder
+                .Create($"PointPool{NAME}{className}Level2")
+                .SetGuiPresentationNoContent(true)
+                .SetSpellOrCantripPool(HeroDefinitions.PointsPoolType.Spell, 1, spellList, LEVEL2_POOL_TAG, 2, 2)
+                .AddToDB();
+
+            // the spells are also prepared on class repertoires so they can be cast with any spell slots
+            var autoPreparedSpells = FeatureDefinitionAutoPreparedSpellsBuilder
+                .Create($"AutoPreparedSpells{NAME}{className}")
+                .SetGuiPresentationNoContent(true)
+                .AddCustomSubFeatures(
+                    ValidateRepertoireForAutoprepared.AnyClassOrSubclass,
+                    AutoPreparedSpellsUpToMaxSpellSlotLevel.Marker,
+                    new AutoPreparedSpellsFromFeatRepertoire(castSpell))
+                .SetSpellcastingClass(null)
+                .SetAutoTag(FAMILY)
+                .AddToDB();
+
+            var groupFeats = new List<FeatDefinition>();
+
+            foreach (var (attributeIncrease, postfix) in attributeIncreases)
+            {
+                groupFeats.Add(FeatDefinitionWithPrerequisitesBuilder
+                    .Create($"{NAME}{className}{postfix}")
+                    .SetGuiPresentation(
+                        Gui.Format($"Feat/&{NAME}{postfix}Title", classTitle),
+                        Gui.Format($"Feat/&{NAME}{postfix}Description", classTitle))
+                    .SetFeatures(attributeIncrease, castSpell, pointPoolLevel1, pointPoolLevel2, autoPreparedSpells)
+                    .SetValidators(ValidatorsFeat.IsLevel4, validateMagicInitiate)
+                    .SetFeatFamily(FAMILY)
+                    .AddToDB());
+            }
+
+            feats.AddRange(groupFeats);
+
+            var classGroup = (FeatDefinitionWithPrerequisites)GroupFeats.MakeGroupWithPreRequisite(
+                $"FeatGroup{NAME}{className}", FAMILY, ValidatorsFeat.IsLevel4, [.. groupFeats]);
+
+            classGroup.Validators.Add(validateMagicInitiate);
+            classGroup.GuiPresentation.Title = Gui.Format($"Feat/&FeatGroup{NAME}ClassTitle", classTitle);
+            classGroup.GuiPresentation.Description = Gui.Format($"Feat/&FeatGroup{NAME}ClassDescription", classTitle);
+
+            NestedFeatGroups.Add(classGroup.Name);
+            classGroups.Add(classGroup);
+        }
+
+        var magicConnoisseurGroup = (FeatDefinitionWithPrerequisites)GroupFeats.MakeGroupWithPreRequisite(
+            $"FeatGroup{NAME}", FAMILY, ValidatorsFeat.IsLevel4, [.. classGroups]);
+
+        magicConnoisseurGroup.Validators.Add(ValidateHasMagicInitiate([.. magicInitiateNames]));
+
+        return magicConnoisseurGroup;
+    }
+
+    // Magic Initiate can also be granted by a background, so check the feat and the repertoire it grants
+    private static Func<FeatDefinition, RulesetCharacterHero, (bool result, string output)> ValidateHasMagicInitiate(
+        params string[] featNames)
+    {
+        return (_, hero) =>
+        {
+            var title = featNames.Length == 1
+                ? DatabaseHelper.GetDefinition<FeatDefinition>(featNames[0]).FormatTitle()
+                : Gui.Localize("Feat/&FeatGroupMagicInitiateTitle");
+            var guiFormat = Gui.Format("Tooltip/&PreReqMustKnow", title);
+            var hasMagicInitiate = featNames.Any(featName =>
+                hero.TrainedFeats.Any(feat => feat.Name == featName) ||
+                hero.SpellRepertoires.Any(repertoire =>
+                    repertoire.SpellCastingFeature.Name == $"CastSpell{featName}"));
+
+            return hasMagicInitiate ? (true, guiFormat) : (false, Gui.Colorize(guiFormat, Gui.ColorFailure));
+        };
     }
 
     #endregion
