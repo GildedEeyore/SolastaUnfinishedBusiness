@@ -80,6 +80,7 @@ internal static class RaceMalakhBuilder
             .SetSpellList(spellListMalakh)
             .AddToDB();
 
+        // Healing Hands: keeps the HealingTouch internal name so existing saved heroes still resolve the power
         var powerMalakhHealingTouch = FeatureDefinitionPowerBuilder
             .Create($"Power{Name}HealingTouch")
             .SetGuiPresentation(Category.Feature, SpellDefinitions.CureWounds)
@@ -87,21 +88,23 @@ internal static class RaceMalakhBuilder
             .SetEffectDescription(
                 EffectDescriptionBuilder
                     .Create()
-                    .SetTargetingData(Side.Ally, RangeType.Touch, 0, TargetType.IndividualsUnique)
+                    .SetTargetingData(Side.All, RangeType.Touch, 0, TargetType.IndividualsUnique)
                     .SetEffectForms(
                         EffectFormBuilder
                             .Create()
                             .SetHealingForm(
                                 HealingComputation.Dice,
                                 0,
-                                DieType.D1,
-                                0,
+                                DieType.D4,
+                                1,
                                 false,
                                 HealingCap.MaximumHitPoints)
-                            .SetLevelAdvancement(EffectForm.LevelApplianceType.AddBonus, LevelSourceType.CharacterLevel)
                             .Build())
                     .Build())
             .AddToDB();
+
+        powerMalakhHealingTouch.AddCustomSubFeatures(
+            new ModifyEffectDescriptionHealingHands(powerMalakhHealingTouch));
 
         var additionalDamageMalakhAngelicForm = FeatureDefinitionAdditionalDamageBuilder
             .Create($"AdditionalDamage{Name}AngelicForm")
@@ -152,6 +155,28 @@ internal static class RaceMalakhBuilder
             .AddToDB();
 
         return raceMalakh;
+    }
+
+    private sealed class ModifyEffectDescriptionHealingHands(FeatureDefinitionPower powerHealingHands)
+        : IModifyEffectDescription
+    {
+        public bool IsValid(BaseDefinition definition, RulesetCharacter character, EffectDescription effectDescription)
+        {
+            return definition == powerHealingHands;
+        }
+
+        public EffectDescription GetEffectDescription(
+            BaseDefinition definition,
+            EffectDescription effectDescription,
+            RulesetCharacter character,
+            RulesetEffect rulesetEffect)
+        {
+            var proficiencyBonus = character.TryGetAttributeValue(AttributeDefinitions.ProficiencyBonus);
+
+            effectDescription.EffectForms[0].HealingForm.diceNumber = proficiencyBonus;
+
+            return effectDescription;
+        }
     }
 
     private static void CreateAngelicFormChoice(FeatureDefinition power)
