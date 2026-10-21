@@ -1539,7 +1539,29 @@ internal static partial class SpellBuilders
         spell.EffectDescription.EffectForms.Add(
             EffectFormBuilder.TopologyForm(TopologyForm.Type.ProjectileBlocker, true));
 
+        // a Disintegrate spell destroys the wall instantly
+        Disintegrate.AddCustomSubFeatures(new PowerOrSpellFinishedByMeDisintegrateWallOfForce());
+
         return spell;
+    }
+
+    private sealed class PowerOrSpellFinishedByMeDisintegrateWallOfForce : IPowerOrSpellFinishedByMe
+    {
+        public IEnumerator OnPowerOrSpellFinishedByMe(CharacterActionMagicEffect action, BaseDefinition baseDefinition)
+        {
+            // vanilla Disintegrate can already target effect proxies, so the wall is targeted through its proxy
+            foreach (var target in action.ActionParams.TargetCharacters)
+            {
+                if (target.RulesetCharacter is RulesetCharacterEffectProxy proxy &&
+                    RulesetEntity.TryGetEntity<RulesetEffectSpell>(proxy.EffectGuid, out var rulesetEffectSpell) &&
+                    rulesetEffectSpell.SpellDefinition == WallOfForce)
+                {
+                    rulesetEffectSpell.Terminate(true);
+                }
+            }
+
+            yield break;
+        }
     }
 
     #endregion
