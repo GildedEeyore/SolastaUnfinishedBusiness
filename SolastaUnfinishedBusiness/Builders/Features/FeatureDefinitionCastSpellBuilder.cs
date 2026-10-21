@@ -237,7 +237,6 @@ internal class FeatureDefinitionCastSpellBuilder
         return this;
     }
 
-#if false
     internal FeatureDefinitionCastSpellBuilder AddRestrictedSchools(params SchoolOfMagicDefinition[] schools)
     {
         foreach (var school in schools)
@@ -248,7 +247,6 @@ internal class FeatureDefinitionCastSpellBuilder
         Definition.RestrictedSchools.Sort();
         return this;
     }
-#endif
 
     internal FeatureDefinitionCastSpellBuilder SetFocusType(EquipmentDefinitions.FocusType focus)
     {

@@ -124,7 +124,7 @@ internal static class ModUi
         "FeatGroupSpellSniper",
         "FeatGroupSquatNimbleness",
         "FeatGroupTelekinetic",
-        "FeatGroupFeyTeleport",
+        "FeatGroupFeyTouched",
         "FeatGroupWeaponMaster",
         "FeatGroupWeaponMastery",
         "FeatHealer",

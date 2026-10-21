@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
+using SolastaUnfinishedBusiness.Api;
 using SolastaUnfinishedBusiness.Api.GameExtensions;
 using SolastaUnfinishedBusiness.Api.LanguageExtensions;
 using SolastaUnfinishedBusiness.Behaviors;
@@ -75,53 +76,9 @@ internal static class CasterFeats
 
         #endregion
 
-        #region Fey Teleportation
+        #region Fey Touched
 
-        const string FEY_TELEPORT = "FeyTeleport";
-
-        var spells = BuildSpellGroup(0, MistyStep);
-
-        var autoPreparedSpells = FeatureDefinitionAutoPreparedSpellsBuilder
-            .Create($"AutoPreparedSpells{FEY_TELEPORT}ation")
-            .SetGuiPresentationNoContent(true)
-            .AddCustomSubFeatures(ValidateRepertoireForAutoprepared.AnyClassOrSubclass)
-            .SetPreparedSpellGroups(spells)
-            .SetSpellcastingClass(null)
-            .SetAutoTag(FEY_TELEPORT)
-            .AddToDB();
-
-        var learnTirmarian = FeatureDefinitionProficiencyBuilder
-            .Create($"ProficiencyFeat{FEY_TELEPORT}ationTirmarian")
-            .SetGuiPresentationNoContent(true)
-            .SetProficiencies(ProficiencyType.Language, "Language_Tirmarian")
-            .AddToDB();
-
-        groupFeats.SetRange(
-            FeatDefinitionBuilder
-                .Create($"Feat{FEY_TELEPORT}ationInt")
-                .SetFeatures(autoPreparedSpells, AttributeModifierCreed_Of_Pakri, learnTirmarian)
-                .AddFeatures(MakeSpellFeatureAndInvocations(spells, FEY_TELEPORT, AttributeDefinitions.Intelligence,
-                    false))
-                .SetGuiPresentation(Category.Feat)
-                .SetFeatFamily(FEY_TELEPORT)
-                .AddToDB(),
-            FeatDefinitionBuilder
-                .Create($"Feat{FEY_TELEPORT}ationCha")
-                .SetFeatures(autoPreparedSpells, AttributeModifierCreed_Of_Solasta, learnTirmarian)
-                .AddFeatures(MakeSpellFeatureAndInvocations(spells, FEY_TELEPORT, AttributeDefinitions.Charisma, false))
-                .SetGuiPresentation(Category.Feat)
-                .SetFeatFamily(FEY_TELEPORT)
-                .AddToDB(),
-            FeatDefinitionBuilder
-                .Create($"Feat{FEY_TELEPORT}ationWis")
-                .SetFeatures(autoPreparedSpells, AttributeModifierCreed_Of_Maraike, learnTirmarian)
-                .AddFeatures(MakeSpellFeatureAndInvocations(spells, FEY_TELEPORT, AttributeDefinitions.Wisdom, false))
-                .SetGuiPresentation(Category.Feat)
-                .SetFeatFamily(FEY_TELEPORT)
-                .AddToDB());
-
-        groups.Add(GroupFeats.MakeGroup($"FeatGroup{FEY_TELEPORT}", FEY_TELEPORT, groupFeats));
-        feats.AddRange(groupFeats);
+        groups.Add(BuildFeyTouched(feats));
 
         #endregion
 
@@ -135,8 +92,8 @@ internal static class CasterFeats
         {
             var tag = kvp.Key;
 
-            spells = BuildSpellGroup(0, kvp.Value);
-            autoPreparedSpells = FeatureDefinitionAutoPreparedSpellsBuilder
+            var spells = BuildSpellGroup(0, kvp.Value);
+            var autoPreparedSpells = FeatureDefinitionAutoPreparedSpellsBuilder
                 .Create($"AutoPreparedSpellsFeat{tag}")
                 .SetGuiPresentationNoContent(true)
                 .AddCustomSubFeatures(ValidateRepertoireForAutoprepared.AnyClassOrSubclass)
@@ -179,6 +136,100 @@ internal static class CasterFeats
         #endregion
 
         GroupFeats.MakeGroup("FeatGroupPlaneMagic", null, groups);
+    }
+
+    [NotNull]
+    private static FeatDefinition BuildFeyTouched(List<FeatDefinition> feats)
+    {
+        const string NAME = "FeatFeyTouched";
+        const string FEY_TOUCHED = "FeyTouched";
+
+        // a single 1st level slot recharged on a long rest to cast the chosen spell once without a spell slot
+        var castingSlots = Enumerable.Range(1, 20)
+            .Select(level => new FeatureDefinitionCastSpell.SlotsByLevelDuplet { Slots = [1], Level = level })
+            .ToList();
+
+        var attributeIncreases = new List<(string, FeatureDefinition, string)>
+        {
+            (AttributeDefinitions.Intelligence, AttributeModifierCreed_Of_Pakri, "Int"),
+            (AttributeDefinitions.Wisdom, AttributeModifierCreed_Of_Maraike, "Wis"),
+            (AttributeDefinitions.Charisma, AttributeModifierCreed_Of_Solasta, "Cha")
+        };
+
+        var groupFeats = new List<FeatDefinition>();
+
+        foreach (var (castingAttribute, attributeIncrease, postfix) in attributeIncreases)
+        {
+            // learns one level 1 divination or enchantment spell from all spells, cast with the increased ability
+            var castSpell = FeatureDefinitionCastSpellBuilder
+                .Create($"CastSpell{NAME}{postfix}")
+                .SetGuiPresentation($"CastSpell{NAME}", Category.Feature)
+                .SetFocusType(EquipmentDefinitions.FocusType.None)
+                .SetSpellCastingOrigin(FeatureDefinitionCastSpell.CastingOrigin.Race)
+                .SetSpellCastingAbility(castingAttribute)
+                .SetSpellKnowledge(SpellKnowledge.Selection)
+                .SetSpellReadyness(SpellReadyness.AllKnown)
+                .SetSlotsRecharge(RechargeRate.LongRest)
+                .SetSlotsPerLevel(castingSlots)
+                .SetKnownCantrips(0, 1, FeatureDefinitionCastSpellBuilder.CasterProgression.Flat)
+                .SetKnownSpells(1, FeatureDefinitionCastSpellBuilder.CasterProgression.Flat)
+                .SetReplacedSpells(1, 0)
+                .SetUniqueLevelSlots(false)
+                .SetSpellList(DatabaseHelper.SpellListDefinitions.SpellListAllSpells)
+                .AddRestrictedSchools(
+                    DatabaseHelper.SchoolOfMagicDefinitions.SchoolDivination,
+                    DatabaseHelper.SchoolOfMagicDefinitions.SchoolEnchantment)
+                .AddCustomSubFeatures(new FeatHelpers.SpellTag(FEY_TOUCHED))
+                .AddToDB();
+
+            // no spell list override so the level up screen keeps the repertoire school restriction
+            var pointPool = FeatureDefinitionPointPoolBuilder
+                .Create($"PointPool{NAME}{postfix}")
+                .SetGuiPresentationNoContent(true)
+                .SetSpellOrCantripPool(HeroDefinitions.PointsPoolType.Spell, 1, null, FEY_TOUCHED, 1, 1)
+                .AddToDB();
+
+            // misty step is cast once per long rest without a spell slot from the feat repertoire
+            var invocationMistyStep = CustomInvocationDefinitionBuilder
+                .Create($"CustomInvocation{FEY_TOUCHED}{MistyStep.Name}{castingAttribute}")
+                .SetGuiPresentation(MistyStep.GuiPresentation)
+                .AddCustomSubFeatures(ValidateRepertoireForAutoprepared.HasSpellCastingFeature(castSpell.Name))
+                .SetPoolType(InvocationPoolTypeCustom.Pools.PlaneMagic)
+                .SetGrantedSpell(MistyStep, longRestRecharge: true)
+                .AddToDB();
+
+            var grantInvocations = FeatureDefinitionGrantInvocationsBuilder
+                .Create($"GrantInvocations{FEY_TOUCHED}{castingAttribute}")
+                .SetGuiPresentationNoContent(true)
+                .SetInvocations(invocationMistyStep)
+                .AddToDB();
+
+            // misty step and the chosen spell are also prepared on class repertoires to be cast with spell slots
+            var autoPreparedSpells = FeatureDefinitionAutoPreparedSpellsBuilder
+                .Create($"AutoPreparedSpells{NAME}{postfix}")
+                .SetGuiPresentationNoContent(true)
+                .AddCustomSubFeatures(
+                    ValidateRepertoireForAutoprepared.AnyClassOrSubclass,
+                    AutoPreparedSpellsUpToMaxSpellSlotLevel.Marker,
+                    new AutoPreparedSpellsFromFeatRepertoire(castSpell))
+                .SetPreparedSpellGroups(BuildSpellGroup(0, MistyStep))
+                .SetSpellcastingClass(null)
+                .SetAutoTag(FEY_TOUCHED)
+                .AddToDB();
+
+            groupFeats.Add(FeatDefinitionWithPrerequisitesBuilder
+                .Create($"{NAME}{postfix}")
+                .SetGuiPresentation(Category.Feat)
+                .SetFeatures(attributeIncrease, castSpell, pointPool, grantInvocations, autoPreparedSpells)
+                .SetValidators(ValidatorsFeat.IsLevel4)
+                .SetFeatFamily(FEY_TOUCHED)
+                .AddToDB());
+        }
+
+        feats.AddRange(groupFeats);
+
+        return GroupFeats.MakeGroupWithPreRequisite(
+            $"FeatGroup{FEY_TOUCHED}", FEY_TOUCHED, ValidatorsFeat.IsLevel4, [.. groupFeats]);
     }
 
     [NotNull]
