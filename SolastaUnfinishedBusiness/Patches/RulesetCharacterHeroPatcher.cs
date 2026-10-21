@@ -971,6 +971,17 @@ public static class RulesetCharacterHeroPatcher
     [UsedImplicitly]
     public static class LookForFeatureOrigin_Patch
     {
+        // also looks inside union feature sets nested in union feature sets (i.e. Theurgy domain features)
+        private static bool IsInUnionFeatureSet(
+            FeatureDefinitionFeatureSet featureSet, FeatureDefinition featureDefinition)
+        {
+            return featureSet.FeatureSet.Contains(featureDefinition) ||
+                   featureSet.FeatureSet
+                       .OfType<FeatureDefinitionFeatureSet>()
+                       .Where(x => x.Mode == FeatureDefinitionFeatureSet.FeatureSetMode.Union)
+                       .Any(x => IsInUnionFeatureSet(x, featureDefinition));
+        }
+
         [UsedImplicitly]
         public static void Postfix(RulesetCharacterHero __instance, 
             FeatureDefinition featureDefinition, 
@@ -996,7 +1007,7 @@ public static class RulesetCharacterHeroPatcher
                         continue;
                     }
 
-                    if (featureSet.FeatureSet.Contains(featureDefinition))
+                    if (IsInUnionFeatureSet(featureSet, featureDefinition))
                     {
                         classDefinition = classesAndLevel.Key;
                         return;
@@ -1019,7 +1030,7 @@ public static class RulesetCharacterHeroPatcher
                         continue;
                     }
 
-                    if (featureSet.FeatureSet.Contains(featureDefinition))
+                    if (IsInUnionFeatureSet(featureSet, featureDefinition))
                     {
                         classDefinition = classesAndLevel.Key;
                         return;

@@ -29,6 +29,15 @@ internal static class WizardTheurgy
 
     private static readonly Dictionary<CharacterSubclassDefinition, SpellListDefinition> DomainSpellLists = [];
 
+    // Theurgy level -> name of the feature set that groups what the domain grants at that level
+    private static readonly Dictionary<int, string> DomainFeatureSetNames = new()
+    {
+        { 2, "ChannelArcana" }, { 6, "ArcaneAcolyte" }, { 10, "ArcanePriest" }, { 14, "ArcaneHighPriest" }
+    };
+
+    private static FeatureDefinitionAttributeModifier _attributeModifierChannelArcana;
+    private static FeatureDefinitionPower _powerDivineArcana;
+
     internal static CharacterSubclassDefinition SubclassToggle { get; private set; }
 
     internal static CharacterSubclassDefinition[] Variants => DomainVariants.Select(x => x.Variant).ToArray();
@@ -38,18 +47,11 @@ internal static class WizardTheurgy
     {
         // LEVEL 02
 
-        // Divine Inspiration
+        // Channel Arcana (granted with Divine Arcana and the domain options in one feature set per domain)
 
-        var featureDivineInspiration = FeatureDefinitionBuilder
-            .Create($"Feature{Name}DivineInspiration")
-            .SetGuiPresentation(Category.Feature)
-            .AddToDB();
-
-        // Channel Arcana
-
-        var attributeModifierChannelArcana = FeatureDefinitionAttributeModifierBuilder
+        _attributeModifierChannelArcana = FeatureDefinitionAttributeModifierBuilder
             .Create($"AttributeModifier{Name}ChannelArcana")
-            .SetGuiPresentation(Category.Feature)
+            .SetGuiPresentationNoContent(true)
             .SetModifier(AttributeModifierOperation.Additive, AttributeDefinitions.ChannelDivinityNumber, 1)
             .AddToDB();
 
@@ -75,7 +77,7 @@ internal static class WizardTheurgy
             .SetSpecialInterruptions(ConditionInterruption.CastSpellExecuted)
             .AddToDB();
 
-        var powerDivineArcana = FeatureDefinitionPowerBuilder
+        _powerDivineArcana = FeatureDefinitionPowerBuilder
             .Create($"Power{Name}DivineArcana")
             .SetGuiPresentation(Category.Feature, SpellDefinitions.Bless)
             .SetUsesFixed(ActivationTime.BonusAction, RechargeRate.ChannelDivinity)
@@ -87,27 +89,6 @@ internal static class WizardTheurgy
                     .SetEffectForms(EffectFormBuilder.ConditionForm(conditionDivineArcana))
                     .SetCasterEffectParameters(SpellDefinitions.Bless)
                     .Build())
-            .AddToDB();
-
-        // LEVEL 06
-
-        var featureArcaneAcolyte = FeatureDefinitionBuilder
-            .Create($"Feature{Name}ArcaneAcolyte")
-            .SetGuiPresentation(Category.Feature)
-            .AddToDB();
-
-        // LEVEL 10
-
-        var featureArcanePriest = FeatureDefinitionBuilder
-            .Create($"Feature{Name}ArcanePriest")
-            .SetGuiPresentation(Category.Feature)
-            .AddToDB();
-
-        // LEVEL 14
-
-        var featureArcaneHighPriest = FeatureDefinitionBuilder
-            .Create($"Feature{Name}ArcaneHighPriest")
-            .SetGuiPresentation(Category.Feature)
             .AddToDB();
 
         // settings entry only, never offered on level up
@@ -137,14 +118,8 @@ internal static class WizardTheurgy
                     Gui.Format($"Subclass/&{Name}DomainTitle", domainTitle),
                     Gui.Format($"Subclass/&{Name}DomainDescription", domainTitle),
                     domain)
-                .AddFeaturesAtLevel(2,
-                    featureDivineInspiration,
-                    magicAffinityArcaneInitiate,
-                    attributeModifierChannelArcana,
-                    powerDivineArcana)
-                .AddFeaturesAtLevel(6, attributeModifierChannelArcanaAdd, featureArcaneAcolyte)
-                .AddFeaturesAtLevel(10, featureArcanePriest)
-                .AddFeaturesAtLevel(14, featureArcaneHighPriest)
+                .AddFeaturesAtLevel(2, magicAffinityArcaneInitiate)
+                .AddFeaturesAtLevel(6, attributeModifierChannelArcanaAdd)
                 .AddFeaturesAtLevel(18, attributeModifierChannelArcanaAdd)
                 .AddToDB();
 
@@ -162,6 +137,9 @@ internal static class WizardTheurgy
             var theurgyLevelByFeature = new Dictionary<FeatureDefinition, int>();
             var unlocks = new List<FeatureUnlockByLevel>();
             var upgrades = new List<FeatureUnlockByLevel>();
+            var featuresByLevel = DomainFeatureSetNames.Keys.ToDictionary(x => x, _ => new List<FeatureDefinition>());
+
+            featuresByLevel[2].AddRange([_attributeModifierChannelArcana, _powerDivineArcana]);
 
             foreach (var featureUnlock in domain.FeatureUnlocks.OrderBy(x => x.Level))
             {
@@ -185,7 +163,8 @@ internal static class WizardTheurgy
                     continue;
                 }
 
-                AddFeature(variant, feature, theurgyLevel, featureUnlock.Level == 1, unlocks, theurgyLevelByFeature);
+                AddFeature(variant, feature, theurgyLevel, featureUnlock.Level == 1, unlocks, featuresByLevel,
+                    theurgyLevelByFeature);
             }
 
             foreach (var featureUnlock in upgrades)
@@ -208,9 +187,36 @@ internal static class WizardTheurgy
                 else if (DomainLevelToTheurgyLevel.TryGetValue(featureUnlock.Level, out var theurgyLevel) &&
                          (featureUnlock.Level != 2 || HasChannelDivinityPower(power)))
                 {
-                    AddFeature(variant, power, theurgyLevel, featureUnlock.Level == 1, unlocks,
+                    AddFeature(variant, power, theurgyLevel, featureUnlock.Level == 1, unlocks, featuresByLevel,
                         theurgyLevelByFeature);
                 }
+            }
+
+            // one entry per level that spells out what this domain grants there
+            foreach (var kvp in featuresByLevel)
+            {
+                var level = kvp.Key;
+                var features = kvp.Value;
+                var setName = DomainFeatureSetNames[level];
+                var featureList = string.Join("\n", features
+                    .Where(x => !x.GuiPresentation.Hidden)
+                    .Select(x => Gui.Format($"Feature/&FeatureSet{Name}DomainFeatureFormat",
+                        x.FormatTitle(), x.FormatDescription())));
+
+                if (featureList == string.Empty)
+                {
+                    featureList = Gui.Localize($"Feature/&FeatureSet{Name}NoDomainFeatures");
+                }
+
+                var featureSet = FeatureDefinitionFeatureSetBuilder
+                    .Create($"FeatureSet{Name}{setName}{domain.Name}")
+                    .SetGuiPresentation(
+                        Gui.Localize($"Feature/&FeatureSet{Name}{setName}Title"),
+                        Gui.Format($"Feature/&FeatureSet{Name}{setName}Description", featureList))
+                    .SetFeatureSet([.. features])
+                    .AddToDB();
+
+                unlocks.Add(new FeatureUnlockByLevel(featureSet, level));
             }
 
             variant.FeatureUnlocks.AddRange(unlocks);
@@ -224,6 +230,7 @@ internal static class WizardTheurgy
         int theurgyLevel,
         bool isArcaneAcolyte,
         List<FeatureUnlockByLevel> unlocks,
+        Dictionary<int, List<FeatureDefinition>> featuresByLevel,
         Dictionary<FeatureDefinition, int> theurgyLevelByFeature)
     {
         var adapted = AdaptFeature(variant, feature, theurgyLevel, isArcaneAcolyte, unlocks);
@@ -233,7 +240,7 @@ internal static class WizardTheurgy
             return;
         }
 
-        unlocks.Add(new FeatureUnlockByLevel(adapted, theurgyLevel));
+        featuresByLevel[theurgyLevel].Add(adapted);
         TrackFeature(adapted, theurgyLevel, theurgyLevelByFeature);
     }
 
@@ -390,10 +397,26 @@ internal static class WizardTheurgy
 
         var repertoire = hero.SpellRepertoires.FirstOrDefault(x => x.SpellCastingClass == Wizard);
 
-        if (repertoire == null ||
-            !spellListDomain.SpellsByLevel
+        if (repertoire == null)
+        {
+            return [];
+        }
+
+        // wizard spells are scribed in spellbook items, and spells picked on this level up aren't scribed yet
+        var spellbookSpells = repertoire.EnumerateAvailableScribedSpells().ToHashSet();
+
+        spellbookSpells.UnionWith(repertoire.KnownSpells);
+
+        var heroBuildingData = hero.GetHeroBuildingData();
+
+        if (heroBuildingData != null)
+        {
+            spellbookSpells.UnionWith(heroBuildingData.AcquiredSpells.Values.SelectMany(x => x).Where(x => x));
+        }
+
+        if (!spellListDomain.SpellsByLevel
                 .SelectMany(x => x.Spells)
-                .All(repertoire.KnownSpells.Contains))
+                .All(spellbookSpells.Contains))
         {
             return [];
         }
