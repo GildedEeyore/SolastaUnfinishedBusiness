@@ -3087,7 +3087,69 @@ internal static class OtherFeats
     {
         const string NAME = "FeatSpellSniper";
 
+        // keeps the 2014 feats in the database so heroes that already took them still load
+        BuildSpellSniperLegacy();
+
+        var combatAffinityBypassCover = FeatureDefinitionCombatAffinityBuilder
+            .Create($"CombatAffinity{NAME}BypassCover")
+            .SetGuiPresentation(Category.Feature)
+            .SetSituationalContext(ExtraSituationalContext.AttackingWithSpell)
+            .SetIgnoreCover()
+            .AddToDB();
+
+        var magicAffinityCastingInMelee = FeatureDefinitionMagicAffinityBuilder
+            .Create($"MagicAffinity{NAME}CastingInMelee")
+            .SetGuiPresentation(Category.Feature)
+            .SetCastingModifiers(noProximityPenalty: true)
+            .AddToDB();
+
+        var featureIncreasedRange = FeatureDefinitionBuilder
+            .Create($"Feature{NAME}IncreasedRange")
+            .SetGuiPresentation(Category.Feature)
+            .AddToDB();
+
+        var modifyEffectDescription = new ModifyEffectDescriptionFeatSpellSniper();
+
+        var attributeIncreases = new List<(FeatureDefinition, string)>
+        {
+            (AttributeModifierCreed_Of_Pakri, "Int"),
+            (AttributeModifierCreed_Of_Maraike, "Wis"),
+            (AttributeModifierCreed_Of_Solasta, "Cha")
+        };
+
         var spellSniperFeats = new List<FeatDefinition>();
+
+        foreach (var (attributeIncrease, postfix) in attributeIncreases)
+        {
+            spellSniperFeats.Add(FeatDefinitionWithPrerequisitesBuilder
+                .Create($"{NAME}{postfix}")
+                .SetGuiPresentation(Category.Feat)
+                .SetFeatures(
+                    attributeIncrease,
+                    combatAffinityBypassCover,
+                    magicAffinityCastingInMelee,
+                    featureIncreasedRange)
+                .SetValidators(ValidatorsFeat.IsLevel4)
+                .SetMustCastSpellsPrerequisite()
+                .SetFeatFamily(NAME)
+                .AddCustomSubFeatures(modifyEffectDescription)
+                .AddToDB());
+        }
+
+        feats.AddRange(spellSniperFeats);
+
+        var spellSniperGroup = GroupFeats.MakeGroupWithPreRequisite(
+            "FeatGroupSpellSniper", NAME, ValidatorsFeat.IsLevel4, [.. spellSniperFeats]);
+
+        spellSniperGroup.mustCastSpellsPrerequisite = !Main.Settings.DisableCastSpellPreRequisitesOnModFeats;
+
+        return spellSniperGroup;
+    }
+
+    private static void BuildSpellSniperLegacy()
+    {
+        const string NAME = "FeatSpellSniper";
+
         var castSpells = new List<(FeatureDefinitionCastSpell, ClassHolder)>
         {
             (CastSpellDruid, ClassHolder.Druid),
@@ -3127,7 +3189,7 @@ internal static class OtherFeats
                 .Create(castSpell, $"CastSpell{NAME}{className}")
                 .SetGuiPresentation(
                     Gui.Format($"Feature/&CastSpell{NAME}Title", classTitle),
-                    Gui.Format($"Feat/&{NAME}Description", classTitle))
+                    Gui.Format($"Feat/&{NAME}LegacyDescription", classTitle))
                 .SetSpellCastingOrigin(FeatureDefinitionCastSpell.CastingOrigin.Race)
                 .SetSpellKnowledge(SpellKnowledge.Selection)
                 .SetSpellReadyness(SpellReadyness.AllKnown)
@@ -3141,10 +3203,10 @@ internal static class OtherFeats
                 .SetSpellList(spellList)
                 .AddCustomSubFeatures(classHolder)
                 .AddToDB();
-            var title = Gui.Format($"Feat/&{NAME}Title", classTitle);
+            var title = Gui.Format($"Feat/&{NAME}LegacyTitle", classTitle);
             var featSpellSniper = FeatDefinitionBuilder
                 .Create($"{NAME}{className}")
-                .SetGuiPresentation(title, Gui.Format($"Feat/&{NAME}Description", classTitle))
+                .SetGuiPresentation(title, Gui.Format($"Feat/&{NAME}LegacyDescription", classTitle))
                 .SetFeatures(
                     FeatureDefinitionCombatAffinityBuilder
                         .Create($"CombatAffinity{NAME}{className}")
@@ -3163,22 +3225,40 @@ internal static class OtherFeats
                             FeatSpellSniperTag)
                         .AddToDB())
                 .SetFeatFamily(NAME)
-                .AddCustomSubFeatures(new ModifyEffectDescriptionFeatSpellSniper())
+                .AddCustomSubFeatures(new ModifyEffectDescriptionFeatSpellSniperLegacy())
                 .AddToDB();
 
-            spellSniperFeats.Add(featSpellSniper);
+            // no longer offered at level up
+            featSpellSniper.GuiPresentation.hidden = true;
         }
-
-        var spellSniperGroup = GroupFeats.MakeGroup("FeatGroupSpellSniper", NAME, spellSniperFeats);
-
-        feats.AddRange(spellSniperFeats);
-
-        spellSniperGroup.mustCastSpellsPrerequisite = true;
-
-        return spellSniperGroup;
     }
 
+    // 2024: spells with a range of at least 10 feet that require an attack roll get +60 feet of range
     private sealed class ModifyEffectDescriptionFeatSpellSniper : IModifyEffectDescription
+    {
+        public bool IsValid(
+            BaseDefinition definition,
+            RulesetCharacter character,
+            EffectDescription effectDescription)
+        {
+            return definition is SpellDefinition &&
+                   effectDescription.RangeType is RangeType.MeleeHit or RangeType.RangeHit &&
+                   effectDescription.RangeParameter >= 2;
+        }
+
+        public EffectDescription GetEffectDescription(
+            BaseDefinition definition,
+            EffectDescription effectDescription,
+            RulesetCharacter character,
+            RulesetEffect rulesetEffect)
+        {
+            effectDescription.rangeParameter = effectDescription.RangeParameter + 12;
+
+            return effectDescription;
+        }
+    }
+
+    private sealed class ModifyEffectDescriptionFeatSpellSniperLegacy : IModifyEffectDescription
     {
         public bool IsValid(
             BaseDefinition definition,
