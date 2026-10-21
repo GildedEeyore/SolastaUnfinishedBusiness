@@ -13,6 +13,7 @@ using SolastaUnfinishedBusiness.Builders.Features;
 using SolastaUnfinishedBusiness.CustomUI;
 using SolastaUnfinishedBusiness.Interfaces;
 using SolastaUnfinishedBusiness.Models;
+using SolastaUnfinishedBusiness.Properties;
 using SolastaUnfinishedBusiness.Validators;
 using static RuleDefinitions;
 using static SolastaUnfinishedBusiness.Builders.Features.AutoPreparedSpellsGroupBuilder;
@@ -30,11 +31,13 @@ internal static class ArcanaUnleashedFeats
         var evocationAdeptGroup = BuildEvocationAdept(feats);
         var necromancyAdeptGroup = BuildNecromancyAdept(feats);
         var arcaneEloquenceGroup = BuildArcaneEloquence(feats);
+        var arcaneInfiltrator = BuildArcaneInfiltrator(feats);
         var arcaneOmensGroup = BuildArcaneOmens(feats);
         var portalJumperGroup = BuildPortalJumper(feats);
         var spellResistantGroup = BuildSpellResistant(feats);
 
-        GroupFeats.FeatGroupOrigin.AddFeats(arcaneEloquenceGroup, arcaneOmensGroup, portalJumperGroup);
+        GroupFeats.FeatGroupOrigin.AddFeats(
+            arcaneEloquenceGroup, arcaneInfiltrator, arcaneOmensGroup, portalJumperGroup);
 
         GroupFeats.FeatGroupBodyResilience.AddFeats(spellResistantGroup);
 
@@ -304,6 +307,41 @@ internal static class ArcanaUnleashedFeats
         feats.AddRange(groupFeats);
 
         return GroupFeats.MakeGroup("FeatGroupArcaneEloquence", FAMILY, groupFeats);
+    }
+
+    #endregion
+
+    #region Arcane Infiltrator
+
+    private static FeatDefinition BuildArcaneInfiltrator(List<FeatDefinition> feats)
+    {
+        const string NAME = "FeatArcaneInfiltrator";
+
+        // same Dodge as the vanilla action: lasts until the start of your next turn
+        var powerCunningDiversion = FeatureDefinitionPowerBuilder
+            .Create($"Power{NAME}CunningDiversion")
+            .SetGuiPresentation(Category.Feature,
+                Sprites.GetSprite("PowerEleganceDodge", Resources.PowerEleganceDodge, 256, 128))
+            .SetUsesProficiencyBonus(ActivationTime.BonusAction)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetDurationData(DurationType.Round, 1, TurnOccurenceType.StartOfTurn)
+                    .SetTargetingData(Side.Ally, RangeType.Self, 0, TargetType.Self)
+                    .SetEffectForms(
+                        EffectFormBuilder.ConditionForm(DatabaseHelper.ConditionDefinitions.ConditionDodging))
+                    .Build())
+            .AddToDB();
+
+        var feat = FeatDefinitionBuilder
+            .Create(NAME)
+            .SetGuiPresentation(Category.Feat)
+            .SetFeatures(powerCunningDiversion)
+            .AddToDB();
+
+        feats.Add(feat);
+
+        return feat;
     }
 
     #endregion
