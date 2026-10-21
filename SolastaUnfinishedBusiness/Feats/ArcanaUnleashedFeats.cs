@@ -31,8 +31,11 @@ internal static class ArcanaUnleashedFeats
         var necromancyAdeptGroup = BuildNecromancyAdept(feats);
         var arcaneOmensGroup = BuildArcaneOmens(feats);
         var portalJumperGroup = BuildPortalJumper(feats);
+        var spellResistantGroup = BuildSpellResistant(feats);
 
         GroupFeats.FeatGroupOrigin.AddFeats(arcaneOmensGroup, portalJumperGroup);
+
+        GroupFeats.FeatGroupBodyResilience.AddFeats(spellResistantGroup);
 
         GroupFeats.FeatGroupSpellCombat.AddFeats(
             abjurationAdeptGroup,
@@ -207,6 +210,7 @@ internal static class ArcanaUnleashedFeats
             void ReactionValidated()
             {
                 helper.SpendActionType(ActionDefinitions.ActionType.Reaction);
+                usablePower.Consume();
 
                 var dieRoll = rulesetHelper.RollDie(DieType, RollContext.None, false, AdvantageType.None, out _, out _);
 
@@ -326,6 +330,142 @@ internal static class ArcanaUnleashedFeats
             actingCharacter.UsedSpecialFeatures.TryAdd(PortalStep, 1);
             actingCharacter.UsedTacticalMoves += MovementCostInCells;
             actingCharacter.UsedTacticalMovesChanged?.Invoke(actingCharacter);
+        }
+    }
+
+    #endregion
+
+    #region Spell Resistant
+
+    private static FeatDefinition BuildSpellResistant(List<FeatDefinition> feats)
+    {
+        const string NAME = "FeatSpellResistant";
+        const string FAMILY = "SpellResistant";
+
+        var powerMagicResistant = FeatureDefinitionPowerBuilder
+            .Create($"Power{NAME}MagicResistant")
+            .SetGuiPresentation(Category.Feature, hidden: true)
+            .SetUsesProficiencyBonus(ActivationTime.NoCost)
+            .SetShowCasting(false)
+            .AddToDB();
+
+        powerMagicResistant.AddCustomSubFeatures(
+            new TryAlterOutcomeSavingThrowMagicResistant(powerMagicResistant));
+
+        var attributeIncreases = new List<(FeatureDefinition, string)>
+        {
+            (AttributeModifierCreed_Of_Misaye, "Dex"),
+            (AttributeModifierCreed_Of_Arun, "Con")
+        };
+
+        var damageResistances = new List<(FeatureDefinition, string)>
+        {
+            (DatabaseHelper.FeatureDefinitionDamageAffinitys.DamageAffinityNecroticResistance, "Necrotic"),
+            (DatabaseHelper.FeatureDefinitionDamageAffinitys.DamageAffinityPsychicResistance, "Psychic"),
+            (DatabaseHelper.FeatureDefinitionDamageAffinitys.DamageAffinityRadiantResistance, "Radiant"),
+            (DatabaseHelper.FeatureDefinitionDamageAffinitys.DamageAffinityThunderResistance, "Thunder")
+        };
+
+        var groupFeats = new List<FeatDefinition>();
+
+        foreach (var (attributeIncrease, attributePostfix) in attributeIncreases)
+        {
+            foreach (var (damageResistance, damagePostfix) in damageResistances)
+            {
+                groupFeats.Add(FeatDefinitionWithPrerequisitesBuilder
+                    .Create($"{NAME}{attributePostfix}{damagePostfix}")
+                    .SetGuiPresentation(Category.Feat)
+                    .SetFeatures(attributeIncrease, damageResistance, powerMagicResistant)
+                    .SetValidators(ValidatorsFeat.IsLevel4)
+                    .SetFeatFamily(FAMILY)
+                    .AddToDB());
+            }
+        }
+
+        feats.AddRange(groupFeats);
+
+        return GroupFeats.MakeGroupWithPreRequisite(
+            "FeatGroupSpellResistant", FAMILY, ValidatorsFeat.IsLevel4, [.. groupFeats]);
+    }
+
+    private sealed class TryAlterOutcomeSavingThrowMagicResistant(
+        FeatureDefinitionPower powerMagicResistant) : ITryAlterOutcomeSavingThrow
+    {
+        private const DieType DieType = RuleDefinitions.DieType.D6;
+        private static readonly int MaxDieTypeValue = DiceMaxValue[(int)DieType];
+
+        // spells (including the ones cast from scrolls or items) and powers granted by magic items
+        private static bool IsSpellOrMagicalEffect(SavingThrowData savingThrowData)
+        {
+            return savingThrowData.SourceDefinition is SpellDefinition ||
+                   savingThrowData.Action is CharacterActionCastSpell ||
+                   savingThrowData.Action?.ActionParams.RulesetEffect is
+                       RulesetEffectSpell or RulesetEffectPower { OriginItem: not null };
+        }
+
+        public IEnumerator OnTryAlterOutcomeSavingThrow(
+            GameLocationBattleManager battleManager,
+            GameLocationCharacter attacker,
+            GameLocationCharacter defender,
+            GameLocationCharacter helper,
+            SavingThrowData savingThrowData,
+            bool hasHitVisual)
+        {
+            var rulesetHelper = helper.RulesetCharacter;
+            var usablePower = PowerProvider.Get(powerMagicResistant, rulesetHelper);
+
+            // only offered when a d6 can still turn the failure into a success
+            if (savingThrowData.SaveOutcome != RollOutcome.Failure ||
+                savingThrowData.SaveOutcomeDelta + MaxDieTypeValue < 0 ||
+                helper != defender ||
+                !IsSpellOrMagicalEffect(savingThrowData) ||
+                rulesetHelper.GetRemainingUsesOfPower(usablePower) == 0)
+            {
+                yield break;
+            }
+
+            // any reaction within a saving flow must use the yielder as waiter
+            yield return helper.MyReactToSpendPower(
+                usablePower,
+                helper,
+                "SpellResistantMagicResistant",
+                "SpendPowerSpellResistantMagicResistantDescription".Formatted(
+                    Category.Reaction, attacker?.Name ?? ReactionRequestCustom.EnvTitle, savingThrowData.Title),
+                ReactionValidated,
+                battleManager);
+
+            yield break;
+
+            void ReactionValidated()
+            {
+                usablePower.Consume();
+
+                var dieRoll = rulesetHelper.RollDie(DieType, RollContext.None, false, AdvantageType.None, out _, out _);
+
+                savingThrowData.SaveOutcomeDelta += dieRoll;
+
+                (ConsoleStyleDuplet.ParameterType, string) extra;
+
+                if (savingThrowData.SaveOutcomeDelta >= 0)
+                {
+                    savingThrowData.SaveOutcome = RollOutcome.Success;
+                    extra = (ConsoleStyleDuplet.ParameterType.Positive, "Feedback/&RollCheckSuccessTitle");
+                }
+                else
+                {
+                    savingThrowData.SaveOutcome = RollOutcome.Failure;
+                    extra = (ConsoleStyleDuplet.ParameterType.Negative, "Feedback/&RollCheckFailureTitle");
+                }
+
+                rulesetHelper.LogCharacterUsedPower(
+                    powerMagicResistant,
+                    "Feedback/&MagicResistantSavingRoll",
+                    extra:
+                    [
+                        (ConsoleStyleDuplet.ParameterType.Positive, dieRoll.ToString()),
+                        extra
+                    ]);
+            }
         }
     }
 
