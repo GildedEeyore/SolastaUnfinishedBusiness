@@ -10,6 +10,7 @@ using SolastaUnfinishedBusiness.Api.GameExtensions;
 using SolastaUnfinishedBusiness.Api.Helpers;
 using SolastaUnfinishedBusiness.Behaviors;
 using SolastaUnfinishedBusiness.Behaviors.Specific;
+using SolastaUnfinishedBusiness.Feats;
 using SolastaUnfinishedBusiness.Interfaces;
 using SolastaUnfinishedBusiness.Models;
 using SolastaUnfinishedBusiness.Subclasses;
@@ -214,7 +215,7 @@ public static class RulesetImplementationManagerPatcher
                 ((2 * totalDamage) + damageForm.BonusDamage - damageRollReduction + additionalDamage));
         }
 
-        private static int RollDamage(
+        private static int RollDamageDice(
             RulesetActor rulesetActor,
             DamageForm damageForm,
             int addDice,
@@ -226,23 +227,8 @@ public static class RulesetImplementationManagerPatcher
             bool useVersatileDamage,
             bool attackModeDamage,
             List<int> rolledValues,
-            bool canRerollDice,
-            RulesetImplementationDefinitions.ApplyFormsParams formsParams)
+            bool canRerollDice)
         {
-            if (rulesetActor is not RulesetCharacter rulesetCharacter)
-            {
-                return rulesetActor.RollDamage(
-                    damageForm, addDice, criticalSuccess, additionalDamage, damageRollReduction, damageMultiplier,
-                    maximumDamage, useVersatileDamage, attackModeDamage, rolledValues, canRerollDice);
-            }
-
-            if (rulesetCharacter
-                .GetSubFeaturesByType<IAllowRerollDice>()
-                .Any(x => x.IsValid(rulesetActor, attackModeDamage, damageForm)))
-            {
-                canRerollDice = true;
-            }
-
             int damage;
 
             if (!criticalSuccess)
@@ -284,6 +270,77 @@ public static class RulesetImplementationManagerPatcher
                         damageForm, addDice, true, additionalDamage, damageRollReduction, damageMultiplier,
                         maximumDamage, useVersatileDamage, attackModeDamage, rolledValues, canRerollDice)
                 };
+            }
+
+            return damage;
+        }
+
+        private static int RollDamage(
+            RulesetActor rulesetActor,
+            DamageForm damageForm,
+            int addDice,
+            bool criticalSuccess,
+            int additionalDamage,
+            int damageRollReduction,
+            float damageMultiplier,
+            bool maximumDamage,
+            bool useVersatileDamage,
+            bool attackModeDamage,
+            List<int> rolledValues,
+            bool canRerollDice,
+            RulesetImplementationDefinitions.ApplyFormsParams formsParams)
+        {
+            if (rulesetActor is not RulesetCharacter rulesetCharacter)
+            {
+                return rulesetActor.RollDamage(
+                    damageForm, addDice, criticalSuccess, additionalDamage, damageRollReduction, damageMultiplier,
+                    maximumDamage, useVersatileDamage, attackModeDamage, rolledValues, canRerollDice);
+            }
+
+            // vanilla only lets the weapon's own damage form reroll dice, so remember it before features change it
+            var isBaseWeaponDamage = canRerollDice;
+
+            if (rulesetCharacter
+                .GetSubFeaturesByType<IAllowRerollDice>()
+                .Any(x => x.IsValid(rulesetActor, attackModeDamage, damageForm)))
+            {
+                canRerollDice = true;
+            }
+
+            int damage;
+
+            //PATCH: supports Savage Attacker feat rolling the weapon's damage dice twice
+            if (MeleeCombatFeats.SavageAttacker.TryUse(
+                    rulesetCharacter, formsParams, attackModeDamage, isBaseWeaponDamage, maximumDamage))
+            {
+                // some critical damage options change the bonus damage, so each roll must start from the same value
+                var bonusDamage = damageForm.bonusDamage;
+                var firstRolledValues = new List<int>();
+                var firstDamage = RollDamageDice(
+                    rulesetActor, damageForm, addDice, criticalSuccess, additionalDamage, damageRollReduction,
+                    damageMultiplier, maximumDamage, useVersatileDamage, attackModeDamage, firstRolledValues,
+                    canRerollDice);
+
+                damageForm.bonusDamage = bonusDamage;
+
+                var secondRolledValues = new List<int>();
+                var secondDamage = RollDamageDice(
+                    rulesetActor, damageForm, addDice, criticalSuccess, additionalDamage, damageRollReduction,
+                    damageMultiplier, maximumDamage, useVersatileDamage, attackModeDamage, secondRolledValues,
+                    canRerollDice);
+                var keepSecond = secondDamage > firstDamage;
+
+                damage = keepSecond ? secondDamage : firstDamage;
+                rolledValues?.AddRange(keepSecond ? secondRolledValues : firstRolledValues);
+
+                MeleeCombatFeats.SavageAttacker.Log(rulesetCharacter, firstDamage, secondDamage, damage);
+            }
+            else
+            {
+                damage = RollDamageDice(
+                    rulesetActor, damageForm, addDice, criticalSuccess, additionalDamage, damageRollReduction,
+                    damageMultiplier, maximumDamage, useVersatileDamage, attackModeDamage, rolledValues,
+                    canRerollDice);
             }
 
             //BUGFIX: don't allow damage roll reduction to spam across many damage forms
