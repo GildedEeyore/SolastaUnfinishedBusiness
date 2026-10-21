@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using SolastaUnfinishedBusiness.Api.GameExtensions;
 using SolastaUnfinishedBusiness.Api.Helpers;
@@ -1606,6 +1608,272 @@ internal static partial class SpellBuilders
 
             outcome = RollOutcome.Failure;
             outcomeDelta = -1;
+        }
+    }
+
+    #endregion
+
+    #region Backlash
+
+    private const string BacklashName = "Backlash";
+
+    internal static SpellDefinition BuildBacklash()
+    {
+        // the force damage scales with the slot level used, so there is one power per slot level
+        var powersBacklash = new Dictionary<int, FeatureDefinitionPower>();
+
+        for (var slotLevel = 4; slotLevel <= 9; slotLevel++)
+        {
+            powersBacklash.Add(slotLevel, FeatureDefinitionPowerBuilder
+                .Create($"Power{BacklashName}{slotLevel}")
+                .SetGuiPresentation(BacklashName, Category.Spell, hidden: true)
+                .SetUsesFixed(ActivationTime.NoCost)
+                .SetShowCasting(false)
+                .SetEffectDescription(
+                    EffectDescriptionBuilder
+                        .Create()
+                        .SetTargetingData(Side.All, RangeType.Distance, 12, TargetType.IndividualsUnique)
+                        .SetSavingThrowData(false, AttributeDefinitions.Constitution, false,
+                            EffectDifficultyClassComputation.SpellCastingFeature)
+                        .SetEffectForms(
+                            EffectFormBuilder
+                                .Create()
+                                .HasSavingThrow(EffectSavingThrowType.HalfDamage)
+                                .SetDamageForm(DamageTypeForce, slotLevel, DieType.D6)
+                                .Build())
+                        .SetParticleEffectParameters(MagicMissile)
+                        .Build())
+                .AddToDB());
+        }
+
+        // tag driven reduction, so the trigger condition is left at a value the before damage handler ignores
+        var reduceDamageBacklash = FeatureDefinitionReduceDamageBuilder
+            .Create($"ReduceDamage{BacklashName}")
+            .SetGuiPresentation(BacklashName, Category.Spell)
+            .AddToDB();
+
+        var conditionBacklash = ConditionDefinitionBuilder
+            .Create($"Condition{BacklashName}")
+            .SetGuiPresentationNoContent(true)
+            .SetSilent(Silent.WhenAddedOrRemoved)
+            .SetFeatures(reduceDamageBacklash)
+            .AddToDB();
+
+        conditionBacklash.AddCustomSubFeatures(
+            new CustomBehaviorConditionBacklash(conditionBacklash, reduceDamageBacklash, powersBacklash));
+
+        var spell = SpellDefinitionBuilder
+            .Create(BacklashName)
+            .SetGuiPresentation(Category.Spell, Shield)
+            .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolAbjuration)
+            .SetSpellLevel(4)
+            .SetCastingTime(ActivationTime.Reaction)
+            .SetMaterialComponent(MaterialComponentType.None)
+            .SetSomaticComponent(false)
+            .SetVerboseComponent(true)
+            .SetVocalSpellSameType(VocalSpellSemeType.Defense)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetTargetingData(Side.Ally, RangeType.Self, 0, TargetType.Self)
+                    .SetEffectAdvancement(EffectIncrementMethod.PerAdditionalSlotLevel, additionalDicePerIncrement: 1)
+                    .SetParticleEffectParameters(Shield)
+                    .Build())
+            .AddToDB();
+
+        spell.AddCustomSubFeatures(new CustomBehaviorBacklash(spell, conditionBacklash, reduceDamageBacklash));
+
+        return spell;
+    }
+
+    private static string BacklashTagPrefix(
+        BaseDefinition reduceDamageBacklash, GameLocationCharacter defender)
+    {
+        // same tag format FeatureDefinitionReduceDamage.DamageReduction consumes
+        return $"{reduceDamageBacklash.Name}:{defender.Guid}:";
+    }
+
+    private sealed class CustomBehaviorBacklash(
+        SpellDefinition spellBacklash,
+        ConditionDefinition conditionBacklash,
+        FeatureDefinitionReduceDamage reduceDamageBacklash)
+        : IPhysicalAttackBeforeHitConfirmedOnMe, IMagicEffectBeforeHitConfirmedOnMe
+    {
+        public IEnumerator OnMagicEffectBeforeHitConfirmedOnMe(
+            GameLocationBattleManager battleManager,
+            GameLocationCharacter attacker,
+            GameLocationCharacter defender,
+            ActionModifier actionModifier,
+            RulesetEffect rulesetEffect,
+            List<EffectForm> actualEffectForms,
+            bool firstTarget,
+            bool criticalHit)
+        {
+            yield return HandleReaction(battleManager, attacker, defender, actualEffectForms, null, rulesetEffect);
+        }
+
+        public IEnumerator OnPhysicalAttackBeforeHitConfirmedOnMe(
+            GameLocationBattleManager battleManager,
+            GameLocationCharacter attacker,
+            GameLocationCharacter defender,
+            ActionModifier actionModifier,
+            RulesetAttackMode attackMode,
+            bool rangedAttack,
+            AdvantageType advantageType,
+            List<EffectForm> actualEffectForms,
+            bool firstTarget,
+            bool criticalHit)
+        {
+            yield return HandleReaction(battleManager, attacker, defender, actualEffectForms, attackMode, null);
+        }
+
+        private IEnumerator HandleReaction(
+            GameLocationBattleManager battleManager,
+            GameLocationCharacter attacker,
+            GameLocationCharacter defender,
+            List<EffectForm> actualEffectForms,
+            RulesetAttackMode attackMode,
+            RulesetEffect rulesetEffect)
+        {
+            var rulesetDefender = defender.RulesetCharacter;
+
+            // the retaliation and clean up run when the attack finishes, which only happens in battle
+            // damage reduction tags only apply to the player side
+            if (Gui.Battle == null ||
+                defender.Side != Side.Ally ||
+                attackMode == null && rulesetEffect == null ||
+                !defender.CanReact() ||
+                !actualEffectForms.Any(x => x.FormType == EffectForm.EffectFormType.Damage) ||
+                !rulesetDefender.AreSpellComponentsValid(spellBacklash) ||
+                rulesetDefender.HasConditionOfCategoryAndType(AttributeDefinitions.TagEffect, conditionBacklash.Name))
+            {
+                yield break;
+            }
+
+            yield return defender.MyReactToCastSpell(
+                spellBacklash, defender, attacker, ReactionValidated, battleManager);
+
+            yield break;
+
+            void ReactionValidated(CharacterActionParams actionParams)
+            {
+                var slotLevel = actionParams.IntParameter;
+                var repertoire = actionParams.SpellRepertoire;
+                var abilityModifier = repertoire == null
+                    ? 0
+                    : AttributeDefinitions.ComputeAbilityScoreModifier(
+                        rulesetDefender.TryGetAttributeValue(repertoire.SpellCastingFeature.SpellcastingAbility));
+                var reducedDamage = Math.Max(0,
+                    rulesetDefender.RollDiceAndSum(DieType.D6, RollContext.None, slotLevel, [], false) +
+                    abilityModifier);
+                var saveDC = repertoire?.SaveDC ?? 10;
+
+                // the condition holds the reduce damage feature while this attack resolves
+                // effect level stores the slot level and amount stores the spell save DC
+                rulesetDefender.InflictCondition(
+                    conditionBacklash.Name,
+                    DurationType.Round,
+                    0,
+                    TurnOccurenceType.StartOfTurn,
+                    AttributeDefinitions.TagEffect,
+                    rulesetDefender.guid,
+                    rulesetDefender.CurrentFaction.Name,
+                    slotLevel,
+                    conditionBacklash.Name,
+                    saveDC,
+                    0,
+                    0);
+
+                var tag = BacklashTagPrefix(reduceDamageBacklash, defender) + reducedDamage;
+
+                attackMode?.AddAttackTagAsNeeded(tag);
+                rulesetEffect?.SourceTags.Add(tag);
+
+                rulesetDefender.DamageReduced(rulesetDefender, reduceDamageBacklash, reducedDamage);
+            }
+        }
+    }
+
+    private sealed class CustomBehaviorConditionBacklash(
+        ConditionDefinition conditionBacklash,
+        FeatureDefinitionReduceDamage reduceDamageBacklash,
+        Dictionary<int, FeatureDefinitionPower> powersBacklash)
+        : IPhysicalAttackFinishedOnMe, IMagicEffectFinishedOnMe
+    {
+        public IEnumerator OnMagicEffectFinishedOnMe(
+            CharacterAction action,
+            GameLocationCharacter attacker,
+            GameLocationCharacter defender,
+            List<GameLocationCharacter> targets)
+        {
+            var rulesetEffect = action.ActionParams.RulesetEffect;
+
+            // casting Backlash itself finishes on the caster, which isn't the attack that triggered it
+            if (rulesetEffect?.SourceDefinition is SpellDefinition { Name: BacklashName })
+            {
+                yield break;
+            }
+
+            HandleRetaliation(attacker, defender, rulesetEffect?.SourceTags);
+
+            yield break;
+        }
+
+        public IEnumerator OnPhysicalAttackFinishedOnMe(
+            GameLocationBattleManager battleManager,
+            CharacterAction action,
+            GameLocationCharacter attacker,
+            GameLocationCharacter defender,
+            RulesetAttackMode attackMode,
+            RollOutcome rollOutcome,
+            int damageAmount)
+        {
+            HandleRetaliation(attacker, defender, attackMode?.AttackTags);
+
+            yield break;
+        }
+
+        private void HandleRetaliation(
+            GameLocationCharacter attacker,
+            GameLocationCharacter defender,
+            List<string> sourceTags)
+        {
+            var rulesetDefender = defender.RulesetCharacter;
+
+            if (!rulesetDefender.TryGetConditionOfCategoryAndType(
+                    AttributeDefinitions.TagEffect, conditionBacklash.Name, out var activeCondition))
+            {
+                return;
+            }
+
+            var slotLevel = activeCondition.EffectLevel;
+            var saveDC = activeCondition.Amount;
+
+            rulesetDefender.RemoveCondition(activeCondition);
+
+            // drop any reduction this attack didn't use up
+            var prefix = BacklashTagPrefix(reduceDamageBacklash, defender);
+
+            sourceTags?.RemoveAll(x => x.StartsWith(prefix));
+
+            // damage from a spell effect object like Spiritual Weapon comes from the creature controlling it
+            attacker = attacker.GetEffectControllerOrSelf();
+
+            // the spell lets you choose to force the save, so it's skipped against allies and applied to anyone else
+            if (attacker == defender ||
+                attacker.Side == defender.Side ||
+                attacker.RulesetCharacter is not { IsDeadOrDyingOrUnconscious: false } ||
+                !defender.IsWithinRange(attacker, 12) ||
+                !powersBacklash.TryGetValue(Math.Min(9, Math.Max(4, slotLevel)), out var powerBacklash))
+            {
+                return;
+            }
+
+            var usablePower = PowerProvider.Get(powerBacklash, rulesetDefender);
+
+            // use the save DC of the repertoire that cast the spell
+            usablePower.saveDC = saveDC;
+            defender.MyExecuteActionSpendPower(usablePower, attacker);
         }
     }
 
