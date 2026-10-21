@@ -293,6 +293,69 @@ internal static partial class SpellBuilders
 
     #endregion
 
+    #region Power Word Fortify
+
+    private const int PowerWordFortifyTemporaryHitPoints = 120;
+
+    internal static SpellDefinition BuildPowerWordFortify()
+    {
+        const string NAME = "PowerWordFortify";
+
+        // temporary hit points are granted by the custom behavior as they depend on the number of targets
+        return SpellDefinitionBuilder
+            .Create(NAME)
+            .SetGuiPresentation(Category.Spell, Aid)
+            .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolEnchantment)
+            .SetSpellLevel(7)
+            .SetCastingTime(ActivationTime.Action)
+            .SetMaterialComponent(MaterialComponentType.None)
+            .SetSomaticComponent(false)
+            .SetVerboseComponent(true)
+            .SetVocalSpellSameType(VocalSpellSemeType.Buff)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetTargetingData(Side.All, RangeType.Distance, 12, TargetType.IndividualsUnique, 6)
+                    .SetParticleEffectParameters(Aid)
+                    .Build())
+            .AddCustomSubFeatures(new PowerOrSpellFinishedByMePowerWordFortify())
+            .AddToDB();
+    }
+
+    private sealed class PowerOrSpellFinishedByMePowerWordFortify : IPowerOrSpellFinishedByMe
+    {
+        public IEnumerator OnPowerOrSpellFinishedByMe(CharacterActionMagicEffect action, BaseDefinition baseDefinition)
+        {
+            if (action.Countered || action.ExecutionFailed)
+            {
+                yield break;
+            }
+
+            var rulesetCaster = action.ActingCharacter.RulesetCharacter;
+            var targets = action.ActionParams.TargetCharacters
+                .Where(x => x.RulesetCharacter is { IsDead: false })
+                .Distinct()
+                .ToArray();
+
+            if (targets.Length == 0)
+            {
+                yield break;
+            }
+
+            // the pool is divided evenly as the game has no UI to split it by hand
+            // 120 divides evenly by 1 to 6 so no hit points are lost
+            var tempHitPoints = PowerWordFortifyTemporaryHitPoints / targets.Length;
+
+            foreach (var target in targets)
+            {
+                target.RulesetCharacter.ReceiveTemporaryHitPoints(
+                    tempHitPoints, DurationType.UntilLongRest, 0, TurnOccurenceType.StartOfTurn, rulesetCaster.Guid);
+            }
+        }
+    }
+
+    #endregion
+
     #region Crown of Stars
 
     internal static SpellDefinition BuildCrownOfStars()
