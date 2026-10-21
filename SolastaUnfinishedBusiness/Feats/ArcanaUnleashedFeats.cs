@@ -35,9 +35,10 @@ internal static class ArcanaUnleashedFeats
         var arcaneOmensGroup = BuildArcaneOmens(feats);
         var portalJumperGroup = BuildPortalJumper(feats);
         var spellResistantGroup = BuildSpellResistant(feats);
+        var transmutedAnatomy = BuildTransmutedAnatomy(feats);
 
         GroupFeats.FeatGroupOrigin.AddFeats(
-            arcaneEloquenceGroup, arcaneInfiltrator, arcaneOmensGroup, portalJumperGroup);
+            arcaneEloquenceGroup, arcaneInfiltrator, arcaneOmensGroup, portalJumperGroup, transmutedAnatomy);
 
         GroupFeats.FeatGroupBodyResilience.AddFeats(spellResistantGroup);
 
@@ -563,6 +564,154 @@ internal static class ArcanaUnleashedFeats
                 rulesetHelper.LogCharacterUsedPower(
                     powerMagicResistant,
                     "Feedback/&MagicResistantSavingRoll",
+                    extra:
+                    [
+                        (ConsoleStyleDuplet.ParameterType.Positive, dieRoll.ToString()),
+                        extra
+                    ]);
+            }
+        }
+    }
+
+    #endregion
+
+    #region Transmuted Anatomy
+
+    private static FeatDefinition BuildTransmutedAnatomy(List<FeatDefinition> feats)
+    {
+        const string NAME = "FeatTransmutedAnatomy";
+
+        var movementAffinityLengthenedStride = FeatureDefinitionMovementAffinityBuilder
+            .Create($"MovementAffinity{NAME}LengthenedStride")
+            .SetGuiPresentation(Category.Feature)
+            .SetBaseSpeedAdditiveModifier(1)
+            .AddToDB();
+
+        var featureResilientAnatomy = FeatureDefinitionBuilder
+            .Create($"Feature{NAME}ResilientAnatomy")
+            .SetGuiPresentation(Category.Feature)
+            .AddToDB();
+
+        var powerResilientAnatomy = FeatureDefinitionPowerBuilder
+            .Create($"Power{NAME}ResilientAnatomy")
+            .SetGuiPresentation(Category.Feature, hidden: true)
+            .SetUsesProficiencyBonus(ActivationTime.NoCost)
+            .SetShowCasting(false)
+            .AddToDB();
+
+        featureResilientAnatomy.AddCustomSubFeatures(
+            new RollSavingThrowInitiatedResilientAnatomy(featureResilientAnatomy));
+
+        powerResilientAnatomy.AddCustomSubFeatures(
+            new TryAlterOutcomeSavingThrowResilientAnatomy(powerResilientAnatomy));
+
+        var feat = FeatDefinitionBuilder
+            .Create(NAME)
+            .SetGuiPresentation(Category.Feat)
+            .SetFeatures(movementAffinityLengthenedStride, featureResilientAnatomy, powerResilientAnatomy)
+            .AddToDB();
+
+        feats.Add(feat);
+
+        return feat;
+    }
+
+    private sealed class RollSavingThrowInitiatedResilientAnatomy(
+        FeatureDefinition featureResilientAnatomy) : IRollSavingThrowInitiated
+    {
+        public void OnSavingThrowInitiated(
+            RulesetActor rulesetActorCaster,
+            RulesetActor rulesetActorDefender,
+            ref int saveBonus,
+            ref string abilityScoreName,
+            BaseDefinition sourceDefinition,
+            List<TrendInfo> modifierTrends,
+            List<TrendInfo> advantageTrends,
+            ref int rollModifier,
+            ref int saveDC,
+            ref bool hasHitVisual,
+            RollOutcome outcome,
+            int outcomeDelta,
+            List<EffectForm> effectForms)
+        {
+            // only effects that would shape-shift you against your will
+            if (rulesetActorCaster == rulesetActorDefender ||
+                effectForms == null ||
+                effectForms.All(x => x.FormType != EffectForm.EffectFormType.ShapeChange))
+            {
+                return;
+            }
+
+            advantageTrends.Add(
+                new TrendInfo(1, FeatureSourceType.CharacterFeature, featureResilientAnatomy.Name, featureResilientAnatomy));
+        }
+    }
+
+    private sealed class TryAlterOutcomeSavingThrowResilientAnatomy(
+        FeatureDefinitionPower powerResilientAnatomy) : ITryAlterOutcomeSavingThrow
+    {
+        private const DieType DieType = RuleDefinitions.DieType.D4;
+        private static readonly int MaxDieTypeValue = DiceMaxValue[(int)DieType];
+
+        public IEnumerator OnTryAlterOutcomeSavingThrow(
+            GameLocationBattleManager battleManager,
+            GameLocationCharacter attacker,
+            GameLocationCharacter defender,
+            GameLocationCharacter helper,
+            SavingThrowData savingThrowData,
+            bool hasHitVisual)
+        {
+            var rulesetHelper = helper.RulesetCharacter;
+            var usablePower = PowerProvider.Get(powerResilientAnatomy, rulesetHelper);
+
+            // only offered on your own failed Constitution saves when a d4 can still turn them into a success
+            if (savingThrowData.SaveOutcome != RollOutcome.Failure ||
+                savingThrowData.SaveOutcomeDelta + MaxDieTypeValue < 0 ||
+                helper != defender ||
+                savingThrowData.SavingThrowAbility != AttributeDefinitions.Constitution ||
+                !helper.CanReact() ||
+                rulesetHelper.GetRemainingUsesOfPower(usablePower) == 0)
+            {
+                yield break;
+            }
+
+            // any reaction within a saving flow must use the yielder as waiter
+            yield return helper.MyReactToSpendPower(
+                usablePower,
+                helper,
+                "TransmutedAnatomyResilientAnatomy",
+                "SpendPowerTransmutedAnatomyResilientAnatomyDescription".Formatted(
+                    Category.Reaction, attacker?.Name ?? ReactionRequestCustom.EnvTitle, savingThrowData.Title),
+                ReactionValidated,
+                battleManager);
+
+            yield break;
+
+            void ReactionValidated()
+            {
+                helper.SpendActionType(ActionDefinitions.ActionType.Reaction);
+                usablePower.Consume();
+
+                var dieRoll = rulesetHelper.RollDie(DieType, RollContext.None, false, AdvantageType.None, out _, out _);
+
+                savingThrowData.SaveOutcomeDelta += dieRoll;
+
+                (ConsoleStyleDuplet.ParameterType, string) extra;
+
+                if (savingThrowData.SaveOutcomeDelta >= 0)
+                {
+                    savingThrowData.SaveOutcome = RollOutcome.Success;
+                    extra = (ConsoleStyleDuplet.ParameterType.Positive, "Feedback/&RollCheckSuccessTitle");
+                }
+                else
+                {
+                    savingThrowData.SaveOutcome = RollOutcome.Failure;
+                    extra = (ConsoleStyleDuplet.ParameterType.Negative, "Feedback/&RollCheckFailureTitle");
+                }
+
+                rulesetHelper.LogCharacterUsedPower(
+                    powerResilientAnatomy,
+                    "Feedback/&ResilientAnatomySavingRoll",
                     extra:
                     [
                         (ConsoleStyleDuplet.ParameterType.Positive, dieRoll.ToString()),
