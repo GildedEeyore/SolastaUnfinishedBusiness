@@ -161,19 +161,95 @@ internal static class MeleeCombatFeats
 
     #region Savage Attack
 
+    private const string SavageAttack = "FeatSavageAttack";
+
+    // 2024 Savage Attacker: once per turn, roll the weapon's damage dice twice and keep either roll
     private static FeatDefinition BuildSavageAttack()
     {
-        return FeatDefinitionBuilder
-            .Create("FeatSavageAttack")
+        var feat = FeatDefinitionBuilder
+            .Create(SavageAttack)
             .SetGuiPresentation(Category.Feat)
-            .SetFeatures(
-                FeatureDefinitionDieRollModifierBuilder
-                    .Create("DieRollModifierFeatSavageAttack")
-                    .SetGuiPresentationNoContent(true)
-                    .SetModifiers(AttackDamageValueRoll | MagicDamageValueRoll, 1, 0, 1,
-                        "Feedback/&FeatSavageAttackReroll")
-                    .AddToDB())
             .AddToDB();
+
+        feat.Features.Add(
+            FeatureDefinitionBuilder
+                .Create("FeatureFeatSavageAttack")
+                .SetGuiPresentationNoContent(true)
+                .AddCustomSubFeatures(new SavageAttacker(feat))
+                .AddToDB());
+
+        return feat;
+    }
+
+    internal sealed class SavageAttacker(FeatDefinition featSavageAttack)
+    {
+        private FeatDefinition FeatSavageAttack { get; } = featSavageAttack;
+
+        // only the weapon's own damage form can reroll dice in vanilla, so canRerollDice tells it apart
+        // from additional damage like sneak attack or smites, which share the same attack mode
+        internal static bool TryUse(
+            RulesetCharacter rulesetCharacter,
+            RulesetImplementationDefinitions.ApplyFormsParams formsParams,
+            bool attackModeDamage,
+            bool isBaseWeaponDamage,
+            bool maximumDamage)
+        {
+            if (!attackModeDamage ||
+                !isBaseWeaponDamage ||
+                maximumDamage ||
+                formsParams.attackMode?.SourceDefinition is not ItemDefinition { IsWeapon: true } ||
+                ValidatorsWeapon.IsUnarmed(formsParams.attackMode) ||
+                !rulesetCharacter.HasSubFeatureOfType<SavageAttacker>())
+            {
+                return false;
+            }
+
+            // once per turn, which isn't a restriction outside combat
+            var battle = Gui.Battle;
+
+            if (battle == null)
+            {
+                return true;
+            }
+
+            var character = GameLocationCharacter.GetFromActor(rulesetCharacter);
+
+            if (character == null)
+            {
+                return false;
+            }
+
+            var usageKey = $"{SavageAttack}{battle.CurrentRound}{battle.ActiveContender?.Guid}";
+
+            if (!character.OncePerTurnIsValid(usageKey))
+            {
+                return false;
+            }
+
+            character.UsedSpecialFeatures.TryAdd(usageKey, 1);
+
+            return true;
+        }
+
+        internal static void Log(RulesetCharacter rulesetCharacter, int firstRoll, int secondRoll, int kept)
+        {
+            var behavior = rulesetCharacter.GetSubFeaturesByType<SavageAttacker>().FirstOrDefault();
+
+            if (behavior == null)
+            {
+                return;
+            }
+
+            rulesetCharacter.LogCharacterUsedFeature(
+                behavior.FeatSavageAttack,
+                "Feedback/&FeatSavageAttackRollTwice",
+                extra:
+                [
+                    (ConsoleStyleDuplet.ParameterType.Positive, firstRoll.ToString()),
+                    (ConsoleStyleDuplet.ParameterType.Positive, secondRoll.ToString()),
+                    (ConsoleStyleDuplet.ParameterType.Positive, kept.ToString())
+                ]);
+        }
     }
 
     #endregion
