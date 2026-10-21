@@ -8,6 +8,7 @@ using SolastaUnfinishedBusiness.Classes;
 using SolastaUnfinishedBusiness.CustomUI;
 using SolastaUnfinishedBusiness.Displays;
 using SolastaUnfinishedBusiness.ItemCrafting;
+using SolastaUnfinishedBusiness.Subclasses;
 #if DEBUG
 using SolastaUnfinishedBusiness.DataMiner;
 #endif
@@ -79,6 +80,9 @@ internal static class BootContext
 
         // Level 20 must always load after classes and subclasses
         Level20Context.Load();
+
+        // Theurgy copies cleric domain features, including the ones Level 20 adds to domains
+        WizardTheurgy.LoadDomainFeatures();
 
         // Item Options must be loaded after Item Crafting
         ItemCraftingMerchantContext.Load();

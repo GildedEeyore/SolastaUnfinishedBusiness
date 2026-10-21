@@ -325,6 +325,7 @@ public static class CharacterBuildingManagerPatcher
             //PATCH: grants cantrip that for whatever reason vanilla has a hard time granting ;-)
             GrantCantripFromCustomAcquiredPool(hero, "Thaumaturge");
             GrantCantripFromCustomAcquiredPool(hero, "DomainNature");
+            GrantCantripFromCustomAcquiredPool(hero, DomainArcana.Name);
             GrantCantripFromCustomAcquiredPool(hero, "PactTome");
             GrantCantripFromCustomAcquiredPool(hero, "PrimalOrder");
 
@@ -336,6 +337,9 @@ public static class CharacterBuildingManagerPatcher
                 hero.GrantAcquiredSpellWithTagFromSubclassPool(WizardAbjuration.SpellTag);
                 hero.GrantAcquiredSpellWithTagFromSubclassPool(WizardEvocation.SpellTag);
             }
+
+            //PATCH: grant Arcana Domain Magical Mastery spells as extra spells so a prepared caster always has them
+            DomainArcana.GrantMagicalMasterySpells(hero);
 
             //PATCH: grants spell repertoires and respective selected spells from feats
             LevelUpHelper.GrantSpellsOrCantripsFromFeatCastSpell(__instance, hero);
