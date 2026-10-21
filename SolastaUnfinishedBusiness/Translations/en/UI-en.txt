@@ -20,4 +20,5 @@ UI/&LootAllIngredientsTooltip=Loots all weightless ingredients from this contain
 UI/&LootAllScrollsTitle=Scrolls
 UI/&LootAllScrollsTooltip=Loots all spell scrolls from this container.
 Failure/&FailureFlagTargetOutOfRangeStrength=Target Out of Range (Strength)
+Failure/&FailureFlagBlockedByWallOfForce=Blocked by a Wall of Force
 Feature/&ListSeparatorTitle=, 

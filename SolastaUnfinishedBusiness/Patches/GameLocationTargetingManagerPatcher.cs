@@ -5,6 +5,7 @@ using System.Reflection.Emit;
 using HarmonyLib;
 using JetBrains.Annotations;
 using SolastaUnfinishedBusiness.Api.Helpers;
+using SolastaUnfinishedBusiness.Behaviors;
 using SolastaUnfinishedBusiness.Models;
 using UnityEngine;
 
@@ -160,6 +161,31 @@ public static class GameLocationTargetingManagerPatcher
                 __instance.affectedCharacterColor =
                     CampaignsContext.HighContrastColors[Main.Settings.HighContrastTargetingAoeSelectedColor];
             }
+        }
+    }
+
+    //PATCH: area effects don't reach creatures on the other side of a Wall of Force
+    [HarmonyPatch(typeof(GameLocationTargetingManager), nameof(GameLocationTargetingManager.ComputeTargetsInBox))]
+    [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
+    [UsedImplicitly]
+    public static class ComputeTargetsInBox_Patch
+    {
+        [UsedImplicitly]
+        public static void Postfix(
+            GameLocationTargetingManager __instance,
+            bool considerShape,
+            EffectDescription effectDescription,
+            List<GameLocationCharacter> affectedCharacters,
+            GameLocationCharacter sourceCharacter)
+        {
+            // box only computations don't set an origin
+            if (!considerShape)
+            {
+                return;
+            }
+
+            WallOfForceContext.RemoveTargetsBehindWall(
+                sourceCharacter, effectDescription, __instance.origin, affectedCharacters);
         }
     }
 }
