@@ -1,0 +1,2 @@
+Feature/&CastSpellElfHighMagicDescription=You know the <b>Sparkle</b> cantrip. At 3rd level you learn <b>Detect Magic</b> and at 5th level, <b>Misty Step</b>. Both can be used once per long rest. Intelligence is your spellcasting ability for these spells.
+Feature/&CastSpellElfHighMagicTitle=High Elf Magic
