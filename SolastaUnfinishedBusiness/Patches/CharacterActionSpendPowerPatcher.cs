@@ -226,6 +226,20 @@ public static class CharacterActionSpendPowerPatcher
                         }
                     }
 
+                    //PATCH: support for `IMagicEffectBeforeHitConfirmedOnMe` on SPELLS
+                    // should also happen outside battles
+                    if (target.RulesetCharacter is { IsDeadOrDyingOrUnconscious: false })
+                    {
+                        foreach (var magicalAttackBeforeHitConfirmedOnMe in target.RulesetCharacter.UsableSpells
+                                     .SelectMany(x => x.GetAllSubFeaturesOfType<IMagicEffectBeforeHitConfirmedOnMe>())
+                                     .ToArray())
+                        {
+                            yield return magicalAttackBeforeHitConfirmedOnMe.OnMagicEffectBeforeHitConfirmedOnMe(
+                                battleManager, actingCharacter, target, actionModifier,
+                                rulesetEffect, effectForms, i == 0, false);
+                        }
+                    }
+
                     //PATCH: support for `IMagicEffectBeforeHitConfirmedOnMe`
                     // should also happen outside battles
                     if (target.RulesetCharacter is { IsDeadOrDyingOrUnconscious: false })
