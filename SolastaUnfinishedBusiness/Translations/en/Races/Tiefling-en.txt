@@ -4,6 +4,7 @@ Feature/&AttributeModifierTieflingIntelligenceAbilityScoreIncreaseDescription=In
 Feature/&AttributeModifierTieflingIntelligenceAbilityScoreIncreaseTitle=Devil's Tongue Attribute Increase
 Feature/&AttributeModifierTieflingStrengthAbilityScoreIncreaseDescription=Strength +1
 Feature/&AttributeModifierTieflingStrengthAbilityScoreIncreaseTitle=Zariel Attribute Increase
+Feature/&CastSpellTieflingDescription=You know the Fire Bolt cantrip. When you reach level 3, you can cast the Hellish Rebuke spell as a level 2 spell once with this trait, and regain the ability to do so again when you finish a long rest. When you reach level 5, you can cast the Darkness spell once with this trait, and regain the ability to do so again when you finish a long rest. Charisma is your spellcasting ability for these spells.
 Feature/&CastSpellTieflingDevilTongueDescription=You know the <b>Vicious Mockery</b> cantrip. At 3rd level you learn <b>Charm Person</b> and at 5th level, <b>Calm Emotions</b>. Both can be used once per long rest.
 Feature/&CastSpellTieflingDevilTongueTitle=Devil's Tongue Magic
 Feature/&CastSpellTieflingFeralDescription=You know the <b>Produce Flame</b> cantrip. At 3rd level you learn <b>Burning Hands</b>. It can be used once per long rest.
