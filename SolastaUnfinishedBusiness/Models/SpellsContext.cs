@@ -390,6 +390,7 @@ internal static class SpellsContext
         RegisterSpell(BuildSwiftQuiver(), 0, SpellListRanger);
         RegisterSpell(BuildSynapticStatic(), 0, SpellListBard, SpellListSorcerer, SpellListWarlock, SpellListWizard);
         RegisterSpell(Telekinesis, 0, SpellListSorcerer, SpellListWizard);
+        RegisterSpell(BuildWallOfForce(), 0, SpellListWizard);
 
         // 6th level
         RegisterSpell(BuildFlashFreeze(), 0, SpellListDruid, SpellListSorcerer, SpellListWarlock);

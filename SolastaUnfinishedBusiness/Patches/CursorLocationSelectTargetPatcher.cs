@@ -4,6 +4,7 @@ using HarmonyLib;
 using JetBrains.Annotations;
 using SolastaUnfinishedBusiness.Api.GameExtensions;
 using SolastaUnfinishedBusiness.Api.LanguageExtensions;
+using SolastaUnfinishedBusiness.Behaviors;
 using SolastaUnfinishedBusiness.CustomUI;
 using SolastaUnfinishedBusiness.Interfaces;
 using SolastaUnfinishedBusiness.Models;
@@ -50,6 +51,13 @@ public static class CursorLocationSelectTargetPatcher
                     actingCharacter, magicEffect, target))
             {
                 __instance.actionModifier.FailureFlags.Add("Failure/&FailureFlagNoPerceptionOfTargetDescription");
+                __result = false;
+            }
+
+            //PATCH: creatures on the other side of a Wall of Force can't be targeted
+            if (__result && WallOfForceContext.IsLineBlocked(actingCharacter, target))
+            {
+                __instance.actionModifier.FailureFlags.Add("Failure/&FailureFlagBlockedByWallOfForce");
                 __result = false;
             }
 

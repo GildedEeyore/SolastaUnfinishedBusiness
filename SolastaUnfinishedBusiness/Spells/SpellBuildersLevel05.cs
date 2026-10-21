@@ -1521,4 +1521,48 @@ internal static partial class SpellBuilders
     }
 
     #endregion
+
+    #region Wall of Force
+
+    internal static SpellDefinition BuildWallOfForce()
+    {
+        // vanilla ships Wall of Force flagged as not implemented, so reuse its definition, proxy and particles
+        var spell = WallOfForce;
+
+        spell.contentPack = CeContentPackContext.CeContentPack; // required otherwise it messes up spells UI
+        spell.implemented = true;
+        spell.materialComponentType = MaterialComponentType.Mundane;
+        spell.specificMaterialComponentConsumed = false;
+
+        // vanilla MoveBlocker topology is never processed by the game; see GameLocationEnvironmentManagerPatcher
+        // and GameLocationPositioningManagerPatcher for the code that makes it block movement
+        spell.EffectDescription.EffectForms.Add(
+            EffectFormBuilder.TopologyForm(TopologyForm.Type.ProjectileBlocker, true));
+
+        // a Disintegrate spell destroys the wall instantly
+        Disintegrate.AddCustomSubFeatures(new PowerOrSpellFinishedByMeDisintegrateWallOfForce());
+
+        return spell;
+    }
+
+    private sealed class PowerOrSpellFinishedByMeDisintegrateWallOfForce : IPowerOrSpellFinishedByMe
+    {
+        public IEnumerator OnPowerOrSpellFinishedByMe(CharacterActionMagicEffect action, BaseDefinition baseDefinition)
+        {
+            // vanilla Disintegrate can already target effect proxies, so the wall is targeted through its proxy
+            foreach (var target in action.ActionParams.TargetCharacters)
+            {
+                if (target.RulesetCharacter is RulesetCharacterEffectProxy proxy &&
+                    RulesetEntity.TryGetEntity<RulesetEffectSpell>(proxy.EffectGuid, out var rulesetEffectSpell) &&
+                    rulesetEffectSpell.SpellDefinition == WallOfForce)
+                {
+                    rulesetEffectSpell.Terminate(true);
+                }
+            }
+
+            yield break;
+        }
+    }
+
+    #endregion
 }

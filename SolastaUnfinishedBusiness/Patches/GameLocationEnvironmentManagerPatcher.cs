@@ -138,4 +138,40 @@ public static class GameLocationEnvironmentManagerPatcher
             return false;
         }
     }
+
+    //PATCH: vanilla never applies MoveBlocker topology forms so this adds it to the list (Wall of Force)
+    [HarmonyPatch(typeof(GameLocationEnvironmentManager),
+        nameof(GameLocationEnvironmentManager.TopologyChangeInProgress))]
+    [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
+    [UsedImplicitly]
+    public static class TopologyChangeInProgress_Patch
+    {
+        [UsedImplicitly]
+        public static bool Prefix(
+            GameLocationEnvironmentManager __instance,
+            List<GameSector> gameSectors,
+            ref BoxInt boxInt,
+            List<TopologyForm.Type> impacterTopologyFlags)
+        {
+            // same as vanilla with the MoveBlocker step added before the trackers are cleaned up
+            __instance.RegisterPreviousCoveredCells();
+            __instance.ApplyTopologyChangeOfGlobalEffects(
+                gameSectors, ref boxInt, impacterTopologyFlags, TopologyForm.Type.SightBlocker);
+            __instance.ApplyTopologyChangeOfGlobalEffects(
+                gameSectors, ref boxInt, impacterTopologyFlags, TopologyForm.Type.ProjectileBlocker);
+            __instance.ApplyTopologyChangeOfGlobalEffects(
+                gameSectors, ref boxInt, impacterTopologyFlags, TopologyForm.Type.DifficultThrough);
+            __instance.ApplyTopologyChangeOfGlobalEffects(
+                gameSectors, ref boxInt, impacterTopologyFlags, TopologyForm.Type.SightImpaired);
+            __instance.ApplyTopologyChangeOfGlobalEffects(
+                gameSectors, ref boxInt, impacterTopologyFlags, TopologyForm.Type.DangerousZone);
+            __instance.ApplyTopologyChangeOfGlobalEffects(
+                gameSectors, ref boxInt, impacterTopologyFlags, TopologyForm.Type.MoveBlocker);
+            __instance.ApplyTopologyChangeOfGlobalEffects(
+                gameSectors, ref boxInt, impacterTopologyFlags, TopologyForm.Type.None);
+            __instance.FinishTopologyChange();
+
+            return false;
+        }
+    }
 }

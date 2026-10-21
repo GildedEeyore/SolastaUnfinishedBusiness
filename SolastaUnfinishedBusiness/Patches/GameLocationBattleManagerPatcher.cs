@@ -546,9 +546,17 @@ public static class GameLocationBattleManagerPatcher
 
         [UsedImplicitly]
         public static void Postfix(
-            bool __result,
+            ref bool __result,
             AttackEvaluationParams attackParams)
         {
+            //PATCH: no attack, weapon or spell, can go through a Wall of Force
+            if (__result && WallOfForceContext.IsLineBlocked(
+                    attackParams.attackPosition, attackParams.defensePosition, attackParams.defender))
+            {
+                attackParams.attackModifier?.FailureFlags.Add("Failure/&FailureFlagBlockedByWallOfForce");
+                __result = false;
+            }
+
             //PATCH: support for features removing ranged attack disadvantage
             RemoveRangedAttackInMeleeDisadvantage.CheckToRemoveRangedDisadvantage(attackParams);
 
