@@ -29,11 +29,12 @@ internal static class ArcanaUnleashedFeats
         var conjurationAdeptGroup = BuildConjurationAdept(feats);
         var evocationAdeptGroup = BuildEvocationAdept(feats);
         var necromancyAdeptGroup = BuildNecromancyAdept(feats);
+        var arcaneEloquenceGroup = BuildArcaneEloquence(feats);
         var arcaneOmensGroup = BuildArcaneOmens(feats);
         var portalJumperGroup = BuildPortalJumper(feats);
         var spellResistantGroup = BuildSpellResistant(feats);
 
-        GroupFeats.FeatGroupOrigin.AddFeats(arcaneOmensGroup, portalJumperGroup);
+        GroupFeats.FeatGroupOrigin.AddFeats(arcaneEloquenceGroup, arcaneOmensGroup, portalJumperGroup);
 
         GroupFeats.FeatGroupBodyResilience.AddFeats(spellResistantGroup);
 
@@ -239,6 +240,70 @@ internal static class ArcanaUnleashedFeats
                     ]);
             }
         }
+    }
+
+    #endregion
+
+    #region Arcane Eloquence
+
+    private static FeatDefinition BuildArcaneEloquence(List<FeatDefinition> feats)
+    {
+        const string NAME = "FeatArcaneEloquence";
+        const string FAMILY = "ArcaneEloquence";
+
+        var spellList = SpellListDefinitionBuilder
+            .Create($"SpellList{NAME}")
+            .SetGuiPresentationNoContent(true)
+            .ClearSpells()
+            .SetSpellsAtLevel(0, ViciousMockery)
+            .FinalizeSpells()
+            .AddToDB();
+
+        // the d4 is always added as it can only help the check
+        var abilityCheckAffinitySmoothTalker = FeatureDefinitionAbilityCheckAffinityBuilder
+            .Create($"AbilityCheckAffinity{NAME}SmoothTalker")
+            .SetGuiPresentation(Category.Feature)
+            .BuildAndSetAffinityGroups(CharacterAbilityCheckAffinity.None, DieType.D4, 1,
+                AbilityCheckGroupOperation.AddDie,
+                (AttributeDefinitions.Charisma, SkillDefinitions.Deception),
+                (AttributeDefinitions.Charisma, SkillDefinitions.Intimidation),
+                (AttributeDefinitions.Charisma, SkillDefinitions.Persuasion))
+            .AddToDB();
+
+        var castingAbilities = new List<(string, string)>
+        {
+            (AttributeDefinitions.Intelligence, "Int"),
+            (AttributeDefinitions.Wisdom, "Wis"),
+            (AttributeDefinitions.Charisma, "Cha")
+        };
+
+        var groupFeats = new List<FeatDefinition>();
+
+        foreach (var (castingAbility, postfix) in castingAbilities)
+        {
+            // same cantrip only repertoire as Arcane Omens, with the ability chosen with the feat
+            var castSpell = FeatureDefinitionCastSpellBuilder
+                .Create(DatabaseHelper.FeatureDefinitionCastSpells.CastSpellGnomeShadow, $"CastSpell{NAME}{postfix}")
+                .SetGuiPresentation($"CastSpell{NAME}", Category.Feature)
+                .SetSpellCastingOrigin(FeatureDefinitionCastSpell.CastingOrigin.Race)
+                .SetSpellCastingAbility(castingAbility)
+                .SetSpellKnowledge(SpellKnowledge.FixedList)
+                .SetKnownCantrips(1, 1, FeatureDefinitionCastSpellBuilder.CasterProgression.Flat)
+                .AddCustomSubFeatures(new FeatHelpers.SpellTag(FAMILY))
+                .SetSpellList(spellList)
+                .AddToDB();
+
+            groupFeats.Add(FeatDefinitionBuilder
+                .Create($"{NAME}{postfix}")
+                .SetGuiPresentation(Category.Feat)
+                .SetFeatures(castSpell, abilityCheckAffinitySmoothTalker)
+                .SetFeatFamily(FAMILY)
+                .AddToDB());
+        }
+
+        feats.AddRange(groupFeats);
+
+        return GroupFeats.MakeGroup("FeatGroupArcaneEloquence", FAMILY, groupFeats);
     }
 
     #endregion
