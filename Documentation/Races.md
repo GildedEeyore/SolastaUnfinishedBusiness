@@ -24,9 +24,9 @@ See normally in dim light, and in natural darkness as if in dim light.
 
 You are resistant to Radiant and Necrotic damage.
 
-* Healing Touch
+* Healing Hands
 
-You can use your Action to heal an ally you can touch. The target will regain HP equal to your character level. Once you use this power, you can't use it again until you finish a long rest.
+As an Action, you touch a creature and roll a number of d4s equal to your Proficiency Bonus. The creature regains a number of Hit Points equal to the total rolled. Once you use this trait, you can't use it again until you finish a Long Rest.
 
 * Languages
 
