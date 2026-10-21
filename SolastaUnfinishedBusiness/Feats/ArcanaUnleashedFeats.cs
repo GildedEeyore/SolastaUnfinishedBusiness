@@ -30,8 +30,9 @@ internal static class ArcanaUnleashedFeats
         var evocationAdeptGroup = BuildEvocationAdept(feats);
         var necromancyAdeptGroup = BuildNecromancyAdept(feats);
         var arcaneOmensGroup = BuildArcaneOmens(feats);
+        var portalJumperGroup = BuildPortalJumper(feats);
 
-        GroupFeats.FeatGroupOrigin.AddFeats(arcaneOmensGroup);
+        GroupFeats.FeatGroupOrigin.AddFeats(arcaneOmensGroup, portalJumperGroup);
 
         GroupFeats.FeatGroupSpellCombat.AddFeats(
             abjurationAdeptGroup,
@@ -233,6 +234,98 @@ internal static class ArcanaUnleashedFeats
                         extra
                     ]);
             }
+        }
+    }
+
+    #endregion
+
+    #region Portal Jumper
+
+    private static FeatDefinition BuildPortalJumper(List<FeatDefinition> feats)
+    {
+        const string NAME = "FeatPortalJumper";
+        const string FAMILY = "PortalJumper";
+
+        var powerPortalStep = FeatureDefinitionPowerBuilder
+            .Create($"Power{NAME}PortalStep")
+            .SetGuiPresentation(Category.Feature, MistyStep)
+            .SetUsesProficiencyBonus(ActivationTime.NoCost)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetTargetingData(Side.Ally, RangeType.Distance, CustomBehaviorPortalStep.MovementCostInCells,
+                        TargetType.Position)
+                    .SetEffectForms(
+                        EffectFormBuilder
+                            .Create()
+                            .SetMotionForm(MotionForm.MotionType.TeleportToDestination)
+                            .Build())
+                    .UseQuickAnimations()
+                    .SetParticleEffectParameters(MistyStep)
+                    .Build())
+            .AddToDB();
+
+        powerPortalStep.AddCustomSubFeatures(
+            new ValidatorsValidatePowerUse(CustomBehaviorPortalStep.CanUsePortalStep),
+            new CustomBehaviorPortalStep());
+
+        var damageResistances = new List<(FeatureDefinition, string)>
+        {
+            (DatabaseHelper.FeatureDefinitionDamageAffinitys.DamageAffinityNecroticResistance, "Necrotic"),
+            (DatabaseHelper.FeatureDefinitionDamageAffinitys.DamageAffinityPsychicResistance, "Psychic"),
+            (DatabaseHelper.FeatureDefinitionDamageAffinitys.DamageAffinityRadiantResistance, "Radiant")
+        };
+
+        var groupFeats = new List<FeatDefinition>();
+
+        foreach (var (damageResistance, postfix) in damageResistances)
+        {
+            groupFeats.Add(FeatDefinitionBuilder
+                .Create($"{NAME}{postfix}")
+                .SetGuiPresentation(Category.Feat)
+                .SetFeatures(damageResistance, powerPortalStep)
+                .SetFeatFamily(FAMILY)
+                .AddToDB());
+        }
+
+        feats.AddRange(groupFeats);
+
+        return GroupFeats.MakeGroup("FeatGroupPortalJumper", FAMILY, groupFeats);
+    }
+
+    private sealed class CustomBehaviorPortalStep : IPowerOrSpellInitiatedByMe
+    {
+        // 15 feet of movement
+        internal const int MovementCostInCells = 3;
+        private const string PortalStep = "PortalStep";
+
+        // in combat only on your turn, once per turn and with 15 feet of movement left
+        internal static bool CanUsePortalStep(RulesetCharacter character)
+        {
+            if (Gui.Battle == null)
+            {
+                return true;
+            }
+
+            var locationCharacter = GameLocationCharacter.GetFromActor(character);
+
+            return locationCharacter != null &&
+                   locationCharacter.OnceInMyTurnIsValid(PortalStep) &&
+                   locationCharacter.RemainingTacticalMoves >= MovementCostInCells;
+        }
+
+        public IEnumerator OnPowerOrSpellInitiatedByMe(CharacterActionMagicEffect action, BaseDefinition baseDefinition)
+        {
+            var actingCharacter = action.ActingCharacter;
+
+            if (Gui.Battle == null)
+            {
+                yield break;
+            }
+
+            actingCharacter.UsedSpecialFeatures.TryAdd(PortalStep, 1);
+            actingCharacter.UsedTacticalMoves += MovementCostInCells;
+            actingCharacter.UsedTacticalMovesChanged?.Invoke(actingCharacter);
         }
     }
 
