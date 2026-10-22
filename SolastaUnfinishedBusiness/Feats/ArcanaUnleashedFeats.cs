@@ -10,6 +10,7 @@ using SolastaUnfinishedBusiness.Behaviors;
 using SolastaUnfinishedBusiness.Behaviors.Specific;
 using SolastaUnfinishedBusiness.Builders;
 using SolastaUnfinishedBusiness.Builders.Features;
+using SolastaUnfinishedBusiness.CustomUI;
 using SolastaUnfinishedBusiness.Interfaces;
 using SolastaUnfinishedBusiness.Models;
 using SolastaUnfinishedBusiness.Validators;
@@ -22,12 +23,19 @@ namespace SolastaUnfinishedBusiness.Feats;
 
 internal static class ArcanaUnleashedFeats
 {
+    // origin feats any background bonus feat pool can pick in place of the background's own feat
+    internal static readonly List<string> OriginFeatChoices = [];
+
     internal static void CreateFeats([NotNull] List<FeatDefinition> feats)
     {
         var abjurationAdeptGroup = BuildAbjurationAdept(feats);
         var conjurationAdeptGroup = BuildConjurationAdept(feats);
         var evocationAdeptGroup = BuildEvocationAdept(feats);
         var necromancyAdeptGroup = BuildNecromancyAdept(feats);
+        var arcaneOmensGroup = BuildArcaneOmens(feats);
+        var portalJumperGroup = BuildPortalJumper(feats);
+
+        GroupFeats.FeatGroupOrigin.AddFeats(arcaneOmensGroup, portalJumperGroup);
 
         GroupFeats.FeatGroupSpellCombat.AddFeats(
             abjurationAdeptGroup,
@@ -94,6 +102,247 @@ internal static class ArcanaUnleashedFeats
 
         return dieType;
     }
+
+    #region Arcane Omens
+
+    private static FeatDefinition BuildArcaneOmens(List<FeatDefinition> feats)
+    {
+        const string NAME = "FeatArcaneOmens";
+        const string FAMILY = "ArcaneOmens";
+
+        var spellList = SpellListDefinitionBuilder
+            .Create($"SpellList{NAME}")
+            .SetGuiPresentationNoContent(true)
+            .ClearSpells()
+            .SetSpellsAtLevel(0, Guidance)
+            .FinalizeSpells()
+            .AddToDB();
+
+        var powerHelpfulPremonition = FeatureDefinitionPowerBuilder
+            .Create($"Power{NAME}HelpfulPremonition")
+            .SetGuiPresentation(Category.Feature, hidden: true)
+            .SetUsesProficiencyBonus(ActivationTime.NoCost)
+            .SetShowCasting(false)
+            .AddToDB();
+
+        powerHelpfulPremonition.AddCustomSubFeatures(
+            new TryAlterOutcomeSavingThrowHelpfulPremonition(powerHelpfulPremonition));
+
+        var castingAbilities = new List<(string, string)>
+        {
+            (AttributeDefinitions.Intelligence, "Int"),
+            (AttributeDefinitions.Wisdom, "Wis"),
+            (AttributeDefinitions.Charisma, "Cha")
+        };
+
+        var groupFeats = new List<FeatDefinition>();
+
+        foreach (var (castingAbility, postfix) in castingAbilities)
+        {
+            // same cantrip only repertoire as vanilla gnome shadow, with the ability chosen with the feat
+            var castSpell = FeatureDefinitionCastSpellBuilder
+                .Create(DatabaseHelper.FeatureDefinitionCastSpells.CastSpellGnomeShadow, $"CastSpell{NAME}{postfix}")
+                .SetGuiPresentation($"CastSpell{NAME}", Category.Feature)
+                .SetSpellCastingOrigin(FeatureDefinitionCastSpell.CastingOrigin.Race)
+                .SetSpellCastingAbility(castingAbility)
+                .SetSpellKnowledge(SpellKnowledge.FixedList)
+                .SetKnownCantrips(1, 1, FeatureDefinitionCastSpellBuilder.CasterProgression.Flat)
+                .AddCustomSubFeatures(new FeatHelpers.SpellTag(FAMILY))
+                .SetSpellList(spellList)
+                .AddToDB();
+
+            groupFeats.Add(FeatDefinitionBuilder
+                .Create($"{NAME}{postfix}")
+                .SetGuiPresentation(Category.Feat)
+                .SetFeatures(castSpell, powerHelpfulPremonition)
+                .SetFeatFamily(FAMILY)
+                .AddToDB());
+        }
+
+        feats.AddRange(groupFeats);
+
+        var group = GroupFeats.MakeGroup("FeatGroupArcaneOmens", FAMILY, groupFeats);
+
+        OriginFeatChoices.Add(group.Name);
+        OriginFeatChoices.AddRange(groupFeats.Select(x => x.Name));
+
+        return group;
+    }
+
+    private sealed class TryAlterOutcomeSavingThrowHelpfulPremonition(
+        FeatureDefinitionPower powerHelpfulPremonition) : ITryAlterOutcomeSavingThrow
+    {
+        private const DieType DieType = RuleDefinitions.DieType.D4;
+        private const int RangeInCells = 6;
+        private static readonly int MaxDieTypeValue = DiceMaxValue[(int)DieType];
+
+        public IEnumerator OnTryAlterOutcomeSavingThrow(
+            GameLocationBattleManager battleManager,
+            GameLocationCharacter attacker,
+            GameLocationCharacter defender,
+            GameLocationCharacter helper,
+            SavingThrowData savingThrowData,
+            bool hasHitVisual)
+        {
+            var rulesetHelper = helper.RulesetCharacter;
+            var usablePower = PowerProvider.Get(powerHelpfulPremonition, rulesetHelper);
+
+            // only offered when a d4 can still turn the failure into a success
+            if (savingThrowData.SaveOutcome != RollOutcome.Failure ||
+                savingThrowData.SaveOutcomeDelta + MaxDieTypeValue < 0 ||
+                !helper.CanReact() ||
+                helper.IsOppositeSide(defender.Side) ||
+                (helper != defender &&
+                 (!helper.IsWithinRange(defender, RangeInCells) || !helper.CanPerceiveTarget(defender))) ||
+                rulesetHelper.GetRemainingUsesOfPower(usablePower) == 0)
+            {
+                yield break;
+            }
+
+            // any reaction within a saving flow must use the yielder as waiter
+            yield return helper.MyReactToSpendPower(
+                usablePower,
+                helper,
+                "ArcaneOmensHelpfulPremonition",
+                "SpendPowerArcaneOmensHelpfulPremonitionDescription".Formatted(
+                    Category.Reaction, defender.Name, attacker?.Name ?? ReactionRequestCustom.EnvTitle,
+                    savingThrowData.Title),
+                ReactionValidated,
+                battleManager);
+
+            yield break;
+
+            void ReactionValidated()
+            {
+                helper.SpendActionType(ActionDefinitions.ActionType.Reaction);
+
+                var dieRoll = rulesetHelper.RollDie(DieType, RollContext.None, false, AdvantageType.None, out _, out _);
+
+                savingThrowData.SaveOutcomeDelta += dieRoll;
+
+                (ConsoleStyleDuplet.ParameterType, string) extra;
+
+                if (savingThrowData.SaveOutcomeDelta >= 0)
+                {
+                    savingThrowData.SaveOutcome = RollOutcome.Success;
+                    extra = (ConsoleStyleDuplet.ParameterType.Positive, "Feedback/&RollCheckSuccessTitle");
+                }
+                else
+                {
+                    savingThrowData.SaveOutcome = RollOutcome.Failure;
+                    extra = (ConsoleStyleDuplet.ParameterType.Negative, "Feedback/&RollCheckFailureTitle");
+                }
+
+                rulesetHelper.LogCharacterUsedPower(
+                    powerHelpfulPremonition,
+                    "Feedback/&HelpfulPremonitionSavingRoll",
+                    extra:
+                    [
+                        (ConsoleStyleDuplet.ParameterType.Positive, dieRoll.ToString()),
+                        extra
+                    ]);
+            }
+        }
+    }
+
+    #endregion
+
+    #region Portal Jumper
+
+    private static FeatDefinition BuildPortalJumper(List<FeatDefinition> feats)
+    {
+        const string NAME = "FeatPortalJumper";
+        const string FAMILY = "PortalJumper";
+
+        var powerPortalStep = FeatureDefinitionPowerBuilder
+            .Create($"Power{NAME}PortalStep")
+            .SetGuiPresentation(Category.Feature, MistyStep)
+            .SetUsesProficiencyBonus(ActivationTime.NoCost)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetTargetingData(Side.Ally, RangeType.Distance, CustomBehaviorPortalStep.MovementCostInCells,
+                        TargetType.Position)
+                    .SetEffectForms(
+                        EffectFormBuilder
+                            .Create()
+                            .SetMotionForm(MotionForm.MotionType.TeleportToDestination)
+                            .Build())
+                    .UseQuickAnimations()
+                    .SetParticleEffectParameters(MistyStep)
+                    .Build())
+            .AddToDB();
+
+        powerPortalStep.AddCustomSubFeatures(
+            new ValidatorsValidatePowerUse(CustomBehaviorPortalStep.CanUsePortalStep),
+            new CustomBehaviorPortalStep());
+
+        var damageResistances = new List<(FeatureDefinition, string)>
+        {
+            (DatabaseHelper.FeatureDefinitionDamageAffinitys.DamageAffinityNecroticResistance, "Necrotic"),
+            (DatabaseHelper.FeatureDefinitionDamageAffinitys.DamageAffinityPsychicResistance, "Psychic"),
+            (DatabaseHelper.FeatureDefinitionDamageAffinitys.DamageAffinityRadiantResistance, "Radiant")
+        };
+
+        var groupFeats = new List<FeatDefinition>();
+
+        foreach (var (damageResistance, postfix) in damageResistances)
+        {
+            groupFeats.Add(FeatDefinitionBuilder
+                .Create($"{NAME}{postfix}")
+                .SetGuiPresentation(Category.Feat)
+                .SetFeatures(damageResistance, powerPortalStep)
+                .SetFeatFamily(FAMILY)
+                .AddToDB());
+        }
+
+        feats.AddRange(groupFeats);
+
+        var group = GroupFeats.MakeGroup("FeatGroupPortalJumper", FAMILY, groupFeats);
+
+        OriginFeatChoices.Add(group.Name);
+        OriginFeatChoices.AddRange(groupFeats.Select(x => x.Name));
+
+        return group;
+    }
+
+    private sealed class CustomBehaviorPortalStep : IPowerOrSpellInitiatedByMe
+    {
+        // 15 feet of movement
+        internal const int MovementCostInCells = 3;
+        private const string PortalStep = "PortalStep";
+
+        // in combat only on your turn, once per turn and with 15 feet of movement left
+        internal static bool CanUsePortalStep(RulesetCharacter character)
+        {
+            if (Gui.Battle == null)
+            {
+                return true;
+            }
+
+            var locationCharacter = GameLocationCharacter.GetFromActor(character);
+
+            return locationCharacter != null &&
+                   locationCharacter.OnceInMyTurnIsValid(PortalStep) &&
+                   locationCharacter.RemainingTacticalMoves >= MovementCostInCells;
+        }
+
+        public IEnumerator OnPowerOrSpellInitiatedByMe(CharacterActionMagicEffect action, BaseDefinition baseDefinition)
+        {
+            var actingCharacter = action.ActingCharacter;
+
+            if (Gui.Battle == null)
+            {
+                yield break;
+            }
+
+            actingCharacter.UsedSpecialFeatures.TryAdd(PortalStep, 1);
+            actingCharacter.UsedTacticalMoves += MovementCostInCells;
+            actingCharacter.UsedTacticalMovesChanged?.Invoke(actingCharacter);
+        }
+    }
+
+    #endregion
 
     #region Abjuration Adept
 

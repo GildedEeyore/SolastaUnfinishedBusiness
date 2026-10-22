@@ -230,7 +230,8 @@ public static partial class Tabletop2024Context
                         Gui.Format($"Feature/&BackgroundBonusFeatDescription",
                         featTitle))
                     .SetPool(HeroDefinitions.PointsPoolType.Feat, 1)
-                    .RestrictChoices(GroupFeats.FeatGroupOrigin.Name, featNameKey)
+                    .RestrictChoices(
+                        [GroupFeats.FeatGroupOrigin.Name, featNameKey, .. ArcanaUnleashedFeats.OriginFeatChoices])
                     .AddToDB();
         }
 
