@@ -85,6 +85,9 @@ internal static class CustomSituationalContext
             ExtraSituationalContext.IsConcentratingOnSpell =>
                 contextParams.source.ConcentratedSpell != null,
 
+            ExtraSituationalContext.AttackingWithSpell =>
+                IsAttackingWithSpell(contextParams),
+
             ExtraSituationalContext.IsConditionSource =>
                 // this is required whenever condition is on target
                 IsConditionSource(contextParams.source, contextParams.condition, contextParams.target.guid) ||
@@ -92,6 +95,14 @@ internal static class CustomSituationalContext
                 IsConditionSource(contextParams.target, contextParams.condition, contextParams.source.guid),
             _ => def
         };
+    }
+
+    // weapon attacks have no effect description, spell attacks carry the spell name as effect name
+    private static bool IsAttackingWithSpell(RulesetImplementationDefinitions.SituationalContextParams contextParams)
+    {
+        return contextParams.effectDescription is { RangeType: RangeType.MeleeHit or RangeType.RangeHit } &&
+               !string.IsNullOrEmpty(contextParams.effectName) &&
+               DatabaseRepository.GetDatabase<SpellDefinition>().HasElement(contextParams.effectName);
     }
 
     private static bool IsConditionSource(
