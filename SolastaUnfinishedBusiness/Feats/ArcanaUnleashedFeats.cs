@@ -1478,18 +1478,18 @@ internal static class ArcanaUnleashedFeats
             feats.AddRange(groupFeats);
 
             var classGroup = (FeatDefinitionWithPrerequisites)GroupFeats.MakeGroupWithPreRequisite(
-                $"FeatGroup{NAME}{className}", FAMILY, ValidatorsFeat.IsLevel4, [.. groupFeats]);
+                $"FeatGroup{FAMILY}{className}", FAMILY, ValidatorsFeat.IsLevel4, [.. groupFeats]);
 
             classGroup.Validators.Add(validateMagicInitiate);
-            classGroup.GuiPresentation.Title = Gui.Format($"Feat/&FeatGroup{NAME}ClassTitle", classTitle);
-            classGroup.GuiPresentation.Description = Gui.Format($"Feat/&FeatGroup{NAME}ClassDescription", classTitle);
+            classGroup.GuiPresentation.Title = Gui.Format($"Feat/&FeatGroup{FAMILY}ClassTitle", classTitle);
+            classGroup.GuiPresentation.Description = Gui.Format($"Feat/&FeatGroup{FAMILY}ClassDescription", classTitle);
 
             NestedFeatGroups.Add(classGroup.Name);
             classGroups.Add(classGroup);
         }
 
         var magicConnoisseurGroup = (FeatDefinitionWithPrerequisites)GroupFeats.MakeGroupWithPreRequisite(
-            $"FeatGroup{NAME}", FAMILY, ValidatorsFeat.IsLevel4, [.. classGroups]);
+            $"FeatGroup{FAMILY}", FAMILY, ValidatorsFeat.IsLevel4, [.. classGroups]);
 
         magicConnoisseurGroup.Validators.Add(ValidateHasMagicInitiate([.. magicInitiateNames]));
 
