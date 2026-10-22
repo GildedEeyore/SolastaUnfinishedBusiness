@@ -1,0 +1,10 @@
+Condition/&ConditionDragonbornDraconicFlightDescription=Spectral wings made of the same energy as your Breath Weapon grant you a flying speed equal to your movement speed. The wings vanish when you retract them, when the duration ends, or if you become incapacitated.
+Condition/&ConditionDragonbornDraconicFlightTitle=Draconic Flight
+Feature/&FeatureDragonbornDraconicFlightDescription=When you reach character level 5, you can channel draconic magic to give yourself temporary flight. As a Bonus Action, you sprout spectral wings on your back that last for 10 minutes or until you retract the wings (no action required) or have the Incapacitated condition. During that time, you have a Fly Speed equal to your Speed. Your wings appear to be made of the same energy as your Breath Weapon. Once you use this trait, you can't use it again until you finish a Long Rest.
+Feature/&FeatureDragonbornDraconicFlightTitle=Draconic Flight
+Feature/&FeatureSetDragonbornDraconicFlightDescription=When you reach character level 5, you can channel draconic magic to give yourself temporary flight. As a Bonus Action, you sprout spectral wings on your back that last for 10 minutes or until you retract the wings (no action required) or have the Incapacitated condition. During that time, you have a Fly Speed equal to your Speed. Your wings appear to be made of the same energy as your Breath Weapon. Once you use this trait, you can't use it again until you finish a Long Rest.
+Feature/&FeatureSetDragonbornDraconicFlightTitle=Draconic Flight
+Feature/&PowerDragonbornDraconicFlightDescription=As a Bonus Action, you sprout spectral wings on your back that last for 10 minutes or until you retract the wings (no action required) or have the Incapacitated condition. During that time, you have a Fly Speed equal to your Speed. Once you use this trait, you can't use it again until you finish a Long Rest.
+Feature/&PowerDragonbornDraconicFlightDismissDescription=Retract your spectral wings. This requires no action.
+Feature/&PowerDragonbornDraconicFlightDismissTitle=Retract Draconic Wings
+Feature/&PowerDragonbornDraconicFlightTitle=Draconic Flight

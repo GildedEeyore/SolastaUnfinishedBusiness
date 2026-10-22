@@ -64,6 +64,9 @@ internal static class RacesContext
         LoadSubrace(SubraceObsidianDwarfBuilder.SubraceObsidianDwarf);
         LoadSubrace(SubraceShadarKaiBuilder.SubraceShadarKai);
 
+        // official races changes
+        RaceDragonbornBuilder.Load();
+
         // sorting
         Races = Races.OrderBy(x => x.FormatTitle()).ToHashSet();
         Subraces = Subraces.OrderBy(x => x.FormatTitle()).ToHashSet();

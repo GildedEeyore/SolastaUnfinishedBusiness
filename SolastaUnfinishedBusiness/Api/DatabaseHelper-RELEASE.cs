@@ -689,6 +689,9 @@ internal static partial class DatabaseHelper
         internal static ConditionDefinition ConditionPatronHiveWeakeningPheromones { get; } =
             GetDefinition<ConditionDefinition>("ConditionPatronHiveWeakeningPheromones");
 
+        internal static ConditionDefinition ConditionPetrified { get; } =
+            GetDefinition<ConditionDefinition>("ConditionPetrified");
+
         internal static ConditionDefinition ConditionPheromoned { get; } =
             GetDefinition<ConditionDefinition>("ConditionPheromoned");
 
