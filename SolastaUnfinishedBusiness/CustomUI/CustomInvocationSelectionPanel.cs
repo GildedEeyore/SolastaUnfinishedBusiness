@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
 using SolastaUnfinishedBusiness.Api.GameExtensions;
+using SolastaUnfinishedBusiness.Behaviors;
 using SolastaUnfinishedBusiness.Behaviors.Specific;
 using SolastaUnfinishedBusiness.Builders;
 using UnityEngine;
@@ -525,6 +526,27 @@ internal class CustomInvocationSelectionPanel : CharacterStagePanel
             .OfType<FeatureDefinitionCustomInvocationPool>()
             .Where(x => x.PoolType != null)
             .Select(f => (poolTag, f)));
+
+        //PATCH: supports `CustomInvocationPoolsByCharacterLevel` on feats taken now or on previous levels
+        var characterLevel = Math.Max(1, hero.ClassesHistory.Count);
+        var newFeats = heroBuildingData.LevelupTrainedFeats
+            .SelectMany(x => x.Value)
+            .ToList();
+
+        foreach (var feat in newFeats.Union(hero.TrainedFeats))
+        {
+            var poolsByCharacterLevel = feat.GetFirstSubFeatureOfType<CustomInvocationPoolsByCharacterLevel>();
+
+            if (poolsByCharacterLevel == null)
+            {
+                continue;
+            }
+
+            _gainedCustomFeatures.AddRange(poolsByCharacterLevel
+                .GetPools(characterLevel, newFeats.Contains(feat))
+                .Select(f => (poolTag, f)));
+        }
+        //END PATCH
 
         if (poolTag != null)
         {

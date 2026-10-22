@@ -4003,6 +4003,10 @@ internal static partial class DatabaseHelper
         internal static SpellDefinition CloudKill { get; } = GetDefinition<SpellDefinition>("CloudKill");
         internal static SpellDefinition ColorSpray { get; } = GetDefinition<SpellDefinition>("ColorSpray");
         internal static SpellDefinition Command { get; } = GetDefinition<SpellDefinition>("Command");
+
+        internal static SpellDefinition ComprehendLanguages { get; } =
+            GetDefinition<SpellDefinition>("ComprehendLanguages");
+
         internal static SpellDefinition ConeOfCold { get; } = GetDefinition<SpellDefinition>("ConeOfCold");
         internal static SpellDefinition Confusion { get; } = GetDefinition<SpellDefinition>("Confusion");
         internal static SpellDefinition ConjureAnimals { get; } = GetDefinition<SpellDefinition>("ConjureAnimals");

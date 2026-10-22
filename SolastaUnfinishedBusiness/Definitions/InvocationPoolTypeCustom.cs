@@ -216,6 +216,12 @@ internal class InvocationPoolTypeCustom
                 main: (Id)ExtraActionId.CastPlaneMagicMain,
                 bonus: (Id)ExtraActionId.CastPlaneMagicBonus, hidden: true);
 
+        // runes are cast from the same action as the Plane Magic spells
+        internal static readonly InvocationPoolTypeCustom RuneShaper =
+            Register("RuneShaper",
+                main: (Id)ExtraActionId.CastPlaneMagicMain,
+                bonus: (Id)ExtraActionId.CastPlaneMagicBonus);
+
         internal static readonly InvocationPoolTypeCustom EldritchVersatilityPool =
             Register("EldritchVersatilityPool",
                 main: (Id)ExtraActionId.EldritchVersatilityMain,
