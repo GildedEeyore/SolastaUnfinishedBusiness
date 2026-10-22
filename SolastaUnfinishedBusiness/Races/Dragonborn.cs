@@ -35,6 +35,8 @@ internal static class RaceDragonbornBuilder
             .Create(ConditionDefinitions.ConditionFlyingAdaptive, $"Condition{Name}DraconicFlight")
             .SetGuiPresentation(Category.Condition, ConditionDefinitions.ConditionFlying)
             .SetPossessive()
+            // explicit fly move mode like the Fly spell's condition, the adaptive affinity raises it to walk speed
+            .AddFeatures(FeatureDefinitionMoveModes.MoveModeFly6)
             .SetCancellingConditions(
                 DatabaseRepository.GetDatabase<ConditionDefinition>().Where(x =>
                     x.IsSubtypeOf(ConditionIncapacitated)).ToArray())
