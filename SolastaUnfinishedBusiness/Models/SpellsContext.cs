@@ -72,7 +72,9 @@ internal static class SpellsContext
     internal static readonly SpellDefinition PsychicLance = BuildPsychicLance();
     internal static readonly SpellDefinition PsychicWhip = BuildPsychicWhip();
     internal static readonly SpellDefinition PulseWave = BuildPulseWave();
+    internal static readonly SpellDefinition Sanctuary = BuildSanctuary();
     internal static readonly SpellDefinition SearingSmite = BuildSearingSmite();
+    internal static readonly SpellDefinition SkinOfRetribution = BuildSkinOfRetribution();
     internal static readonly SpellDefinition SonicBoom = BuildSonicBoom();
     internal static readonly SpellDefinition StaggeringSmite = BuildStaggeringSmite();
     internal static readonly SpellDefinition SteelWhirlwind = BuildSteelWhirlwind();
@@ -304,9 +306,9 @@ internal static class SpellsContext
         RegisterSpell(BuildMule(), 0, SpellListBard, SpellListSorcerer, SpellListWarlock, SpellListWizard);
         RegisterSpell(BuildRadiantMotes(), 0, SpellListWizard, spellListInventorClass);
         RegisterSpell(BuildRayOfSickness(), 0, SpellListSorcerer, SpellListWizard);
-        RegisterSpell(BuildSanctuary(), 0, SpellListCleric, spellListInventorClass);
+        RegisterSpell(Sanctuary, 0, SpellListCleric, spellListInventorClass);
         RegisterSpell(SearingSmite, 0, SpellListPaladin, SpellListRanger);
-        RegisterSpell(BuildSkinOfRetribution(), 0, SpellListWarlock);
+        RegisterSpell(SkinOfRetribution, 0, SpellListWarlock);
         RegisterSpell(BuildSpikeBarrage(), 0, SpellListRanger);
         RegisterSpell(ThunderousSmite, 0, SpellListPaladin);
         RegisterSpell(BuildVileBrew(), 0, SpellListSorcerer, SpellListWizard, spellListInventorClass);

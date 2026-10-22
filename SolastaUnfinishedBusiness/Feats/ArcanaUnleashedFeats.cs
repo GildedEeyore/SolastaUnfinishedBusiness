@@ -43,6 +43,7 @@ internal static class ArcanaUnleashedFeats
 
         // listed on its own like Magic Initiate
         BuildMagicConnoisseur(feats);
+        BuildRuneShaper(feats);
 
         GroupFeats.FeatGroupOrigin.AddFeats(
             arcaneEloquenceGroup, arcaneInfiltrator, arcaneOmensGroup, portalJumperGroup, transmutedAnatomy);
@@ -1512,6 +1513,138 @@ internal static class ArcanaUnleashedFeats
 
             return hasMagicInitiate ? (true, guiFormat) : (false, Gui.Colorize(guiFormat, Gui.ColorFailure));
         };
+    }
+
+    #endregion
+
+    #region Rune Shaper
+
+    private static FeatDefinition BuildRuneShaper(List<FeatDefinition> feats)
+    {
+        const string NAME = "FeatRuneShaper";
+        const string FAMILY = "RuneShaper";
+
+        // the Enemy (Disguise Self) and Friend (Speak with Animals) runes are left out as neither spell is in the game
+        var runes = new List<(string, SpellDefinition)>
+        {
+            ("Cloud", FogCloud),
+            ("Death", InflictWounds),
+            ("Dragon", SpellsContext.ChromaticOrb),
+            ("Fire", BurningHands),
+            ("Frost", SpellsContext.SkinOfRetribution),
+            ("Hill", Goodberry),
+            ("Journey", Longstrider),
+            ("King", SpellsContext.Command),
+            ("Mountain", Entangle),
+            ("Stone", SpellsContext.Sanctuary),
+            ("Storm", Thunderwave)
+        };
+
+        var castingAbilities = new List<(string, string)>
+        {
+            (AttributeDefinitions.Intelligence, "Int"),
+            (AttributeDefinitions.Wisdom, "Wis"),
+            (AttributeDefinitions.Charisma, "Cha")
+        };
+
+        var castSpellNames = castingAbilities
+            .Select(x => $"CastSpell{NAME}{x.Item2}")
+            .ToArray();
+
+        // the feat spells are cast from the empty feat repertoire so they use the ability chosen with the feat
+        RepertoireValidForAutoPreparedFeature isFeatRepertoire = (repertoire, _) =>
+            castSpellNames.Contains(repertoire.spellCastingFeature.Name);
+
+        // each rune is cast once per long rest without a spell slot or material components
+        foreach (var (rune, spell) in runes)
+        {
+            _ = CustomInvocationDefinitionBuilder
+                .Create($"CustomInvocation{FAMILY}{rune}")
+                .SetGuiPresentation(Category.Feature, spell)
+                .AddCustomSubFeatures(isFeatRepertoire)
+                .SetPoolType(InvocationPoolTypeCustom.Pools.RuneShaper)
+                .SetGrantedSpell(spell, longRestRecharge: true)
+                .AddToDB();
+        }
+
+        var invocationComprehendLanguages = CustomInvocationDefinitionBuilder
+            .Create($"CustomInvocation{FAMILY}{ComprehendLanguages.Name}")
+            .SetGuiPresentation(ComprehendLanguages.GuiPresentation)
+            .AddCustomSubFeatures(isFeatRepertoire)
+            .SetPoolType(InvocationPoolTypeCustom.Pools.PlaneMagic)
+            .SetGrantedSpell(ComprehendLanguages, longRestRecharge: true)
+            .AddToDB();
+
+        var grantInvocations = FeatureDefinitionGrantInvocationsBuilder
+            .Create($"GrantInvocations{NAME}")
+            .SetGuiPresentationNoContent(true)
+            .SetInvocations(invocationComprehendLanguages)
+            .AddToDB();
+
+        // comprehend languages and the rune spells are also prepared on class repertoires to be cast with spell slots
+        var autoPreparedSpells = FeatureDefinitionAutoPreparedSpellsBuilder
+            .Create($"AutoPreparedSpells{NAME}")
+            .SetGuiPresentationNoContent(true)
+            .AddCustomSubFeatures(
+                ValidateRepertoireForAutoprepared.AnyClassOrSubclass,
+                AutoPreparedSpellsUpToMaxSpellSlotLevel.Marker,
+                new AutoPreparedSpellsFromInvocationPool(InvocationPoolTypeCustom.Pools.RuneShaper))
+            .SetPreparedSpellGroups(BuildSpellGroup(0, ComprehendLanguages))
+            .SetSpellcastingClass(null)
+            .SetAutoTag(FAMILY)
+            .AddToDB();
+
+        // runes known are half the proficiency bonus rounded down, and one can be replaced on each level up
+        var learnPools = Enumerable.Range(1, 3)
+            .Select(points => CustomInvocationPoolDefinitionBuilder
+                .Create($"InvocationPool{NAME}Learn{points}")
+                .SetGuiPresentationNoContent(true)
+                .Setup(InvocationPoolTypeCustom.Pools.RuneShaper, points)
+                .AddToDB())
+            .ToArray();
+
+        var unlearnPool = CustomInvocationPoolDefinitionBuilder
+            .Create($"InvocationPool{NAME}Unlearn")
+            .SetGuiPresentationNoContent(true)
+            .Setup(InvocationPoolTypeCustom.Pools.RuneShaper, 1, true)
+            .AddToDB();
+
+        var poolsByCharacterLevel = new CustomInvocationPoolsByCharacterLevel(
+            characterLevel => (2 + ((characterLevel - 1) / 4)) / 2, learnPools, unlearnPool);
+
+        var groupFeats = new List<FeatDefinition>();
+
+        foreach (var (castingAbility, postfix) in castingAbilities)
+        {
+            var castSpell = FeatureDefinitionCastSpellBuilder
+                .Create($"CastSpell{NAME}{postfix}")
+                .SetGuiPresentationNoContent(true)
+                .SetFocusType(EquipmentDefinitions.FocusType.None)
+                .SetSpellCastingOrigin(FeatureDefinitionCastSpell.CastingOrigin.Race)
+                .SetSpellReadyness(SpellReadyness.AllKnown)
+                .SetSlotsRecharge(RechargeRate.None)
+                .SetSlotsPerLevel(FeatureDefinitionCastSpellBuilder.CasterProgression.None)
+                .SetSpellList(SpellsContext.EmptySpellList)
+                .SetSpellCastingAbility(castingAbility)
+                .AddToDB();
+
+            groupFeats.Add(FeatDefinitionBuilder
+                .Create($"{NAME}{postfix}")
+                .SetGuiPresentation(Category.Feat)
+                .SetFeatures(castSpell, grantInvocations, autoPreparedSpells)
+                .AddCustomSubFeatures(poolsByCharacterLevel)
+                .SetMustCastSpellsPrerequisite()
+                .SetFeatFamily(FAMILY)
+                .AddToDB());
+        }
+
+        feats.AddRange(groupFeats);
+
+        var runeShaperGroup = GroupFeats.MakeGroup("FeatGroupRuneShaper", FAMILY, groupFeats);
+
+        runeShaperGroup.mustCastSpellsPrerequisite = !Main.Settings.DisableCastSpellPreRequisitesOnModFeats;
+
+        return runeShaperGroup;
     }
 
     #endregion

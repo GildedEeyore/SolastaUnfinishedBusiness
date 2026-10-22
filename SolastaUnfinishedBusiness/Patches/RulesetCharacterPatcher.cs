@@ -2020,6 +2020,22 @@ public static class RulesetCharacterPatcher
                             spell.SpellLevel <= maxSpellLevel &&
                             !spellRepertoire.AutoPreparedSpells.Contains(spell)));
                 }
+
+                //PATCH: supports `AutoPreparedSpellsFromInvocationPool`
+                var fromInvocationPool =
+                    autoPreparedSpells.GetFirstSubFeatureOfType<AutoPreparedSpellsFromInvocationPool>();
+
+                if (fromInvocationPool != null && __instance is RulesetCharacterHero hero)
+                {
+                    spellRepertoire.AutoPreparedSpells.AddRange(hero.TrainedInvocations
+                        .OfType<InvocationDefinitionCustom>()
+                        .Where(invocation => invocation.PoolType == fromInvocationPool.PoolType)
+                        .Select(invocation => invocation.GrantedSpell)
+                        .Where(spell =>
+                            spell &&
+                            spell.SpellLevel <= maxSpellLevel &&
+                            !spellRepertoire.AutoPreparedSpells.Contains(spell)));
+                }
                 //END PATCH
             }
 

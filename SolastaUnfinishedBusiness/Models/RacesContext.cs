@@ -66,6 +66,9 @@ internal static class RacesContext
 
         // official races changes
         RaceDragonbornBuilder.Load();
+        SubraceHighElfBuilder.Load();
+        RaceHalfOrcBuilder.Load();
+        RaceTieflingInfernalLegacyBuilder.Load();
 
         // sorting
         Races = Races.OrderBy(x => x.FormatTitle()).ToHashSet();
