@@ -18,7 +18,14 @@ internal static class RaceDragonbornBuilder
 
     internal static void Load()
     {
+        // the race selection screen only lists level 1 features so this one describes the level 5 power
+        var featureDraconicFlight = FeatureDefinitionBuilder
+            .Create($"Feature{Name}DraconicFlight")
+            .SetGuiPresentation(Category.Feature)
+            .AddToDB();
+
         Dragonborn.FeatureUnlocks.Add(new FeatureUnlockByLevel(SenseDarkvision, 1));
+        Dragonborn.FeatureUnlocks.Add(new FeatureUnlockByLevel(featureDraconicFlight, 1));
         Dragonborn.FeatureUnlocks.Add(new FeatureUnlockByLevel(BuildDraconicFlight(), 5));
     }
 
