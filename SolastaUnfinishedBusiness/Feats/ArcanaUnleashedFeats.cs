@@ -23,6 +23,9 @@ namespace SolastaUnfinishedBusiness.Feats;
 
 internal static class ArcanaUnleashedFeats
 {
+    // origin feats any background bonus feat pool can pick in place of the background's own feat
+    internal static readonly List<string> OriginFeatChoices = [];
+
     internal static void CreateFeats([NotNull] List<FeatDefinition> feats)
     {
         var abjurationAdeptGroup = BuildAbjurationAdept(feats);
@@ -158,7 +161,12 @@ internal static class ArcanaUnleashedFeats
 
         feats.AddRange(groupFeats);
 
-        return GroupFeats.MakeGroup("FeatGroupArcaneOmens", FAMILY, groupFeats);
+        var group = GroupFeats.MakeGroup("FeatGroupArcaneOmens", FAMILY, groupFeats);
+
+        OriginFeatChoices.Add(group.Name);
+        OriginFeatChoices.AddRange(groupFeats.Select(x => x.Name));
+
+        return group;
     }
 
     private sealed class TryAlterOutcomeSavingThrowHelpfulPremonition(
@@ -290,7 +298,12 @@ internal static class ArcanaUnleashedFeats
 
         feats.AddRange(groupFeats);
 
-        return GroupFeats.MakeGroup("FeatGroupPortalJumper", FAMILY, groupFeats);
+        var group = GroupFeats.MakeGroup("FeatGroupPortalJumper", FAMILY, groupFeats);
+
+        OriginFeatChoices.Add(group.Name);
+        OriginFeatChoices.AddRange(groupFeats.Select(x => x.Name));
+
+        return group;
     }
 
     private sealed class CustomBehaviorPortalStep : IPowerOrSpellInitiatedByMe
