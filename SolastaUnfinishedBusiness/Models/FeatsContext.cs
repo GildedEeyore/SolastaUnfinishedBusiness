@@ -79,7 +79,8 @@ internal static class FeatsContext
         {
             FeatGroups.Remove(featGroup);
 
-            if (!CasterFeats.MagicTouchedData.ContainsKey(featGroup.Name.Replace("FeatGroup", string.Empty)))
+            if (!CasterFeats.MagicTouchedData.ContainsKey(featGroup.Name.Replace("FeatGroup", string.Empty)) &&
+                !ArcanaUnleashedFeats.NestedFeatGroups.Contains(featGroup.Name))
             {
                 LoadFeat(featGroup);
             }

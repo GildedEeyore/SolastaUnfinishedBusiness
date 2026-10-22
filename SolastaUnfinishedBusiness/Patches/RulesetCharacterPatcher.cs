@@ -2004,6 +2004,23 @@ public static class RulesetCharacterPatcher
                         .Where(spell => spell.SpellLevel <= maxSpellLevel));
                     spellRepertoire.AutoPreparedTag = autoPreparedSpells.AutoPreparedTag;
                 }
+
+                //PATCH: supports `AutoPreparedSpellsFromFeatRepertoire`
+                var fromFeatRepertoire =
+                    autoPreparedSpells.GetFirstSubFeatureOfType<AutoPreparedSpellsFromFeatRepertoire>();
+                var featRepertoire = fromFeatRepertoire == null
+                    ? null
+                    : __instance.SpellRepertoires.FirstOrDefault(x =>
+                        x.SpellCastingFeature == fromFeatRepertoire.CastSpell);
+
+                if (featRepertoire != null)
+                {
+                    spellRepertoire.AutoPreparedSpells.AddRange(featRepertoire.KnownSpells
+                        .Where(spell =>
+                            spell.SpellLevel <= maxSpellLevel &&
+                            !spellRepertoire.AutoPreparedSpells.Contains(spell)));
+                }
+                //END PATCH
             }
 
             return false;

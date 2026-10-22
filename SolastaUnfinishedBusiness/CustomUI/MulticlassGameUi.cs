@@ -486,6 +486,12 @@ internal static class MulticlassGameUi
         var heroBuildingData = localHeroCharacter.GetHeroBuildingData();
         var pointPool = GetCurrentPool(panel, heroBuildingData);
 
+        //PATCH: feat repertoires with one pool per spell level only learn spells of the current pool level
+        if (LevelUpHelper.IsSpellLevelOutsideFeatPool(spellFeature, pointPool, spellLevel))
+        {
+            canAcquireSpells = false;
+        }
+
         group.extraSpellsMap.Clear();
         group.spellsTable.gameObject.SetActive(true);
         group.slotStatusTable.gameObject.SetActive(true);

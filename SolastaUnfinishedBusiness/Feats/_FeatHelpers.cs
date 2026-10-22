@@ -31,13 +31,17 @@ internal static class FeatHelpers
 
     internal sealed class SpellTag
     {
-        internal SpellTag(string spellTag, bool forceFixedList = false)
+        internal SpellTag(string spellTag, bool forceFixedList = false, params string[] poolTags)
         {
             Name = spellTag;
             ForceFixedList = forceFixedList;
+            PoolTags = poolTags.Length > 0 ? poolTags : [spellTag];
         }
 
         internal string Name { get; }
         internal bool ForceFixedList { get; }
+
+        // extra spells tags of the point pools that learn spells for this repertoire, each must end with Name
+        internal string[] PoolTags { get; }
     }
 }

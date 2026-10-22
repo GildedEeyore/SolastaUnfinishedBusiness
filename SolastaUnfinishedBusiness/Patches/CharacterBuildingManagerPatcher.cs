@@ -920,6 +920,70 @@ public static class CharacterBuildingManagerPatcher
         }
     }
 
+    //PATCH: feat repertoires with one pool per spell level only auto learn spells of the current pool level
+    [HarmonyPatch(typeof(CharacterBuildingManager), nameof(CharacterBuildingManager.AutoAcquireSpells))]
+    [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
+    [UsedImplicitly]
+    public static class AutoAcquireSpells_Patch
+    {
+        [UsedImplicitly]
+        public static bool Prefix(
+            CharacterBuildingManager __instance,
+            CharacterHeroBuildingData heroBuildingData,
+            string spellTag,
+            HeroDefinitions.PointsPoolType mode,
+            System.Random rng)
+        {
+            if (mode != HeroDefinitions.PointsPoolType.Spell)
+            {
+                return true;
+            }
+
+            var pointPool = __instance.GetPointPoolOfTypeAndTag(heroBuildingData, mode, spellTag);
+            var spellFeature = __instance.GetSpellFeature(heroBuildingData, spellTag);
+
+            if (pointPool is not { MaxSpellLevel: > 0 } ||
+                !spellFeature ||
+                !spellFeature.HasSubFeatureOfType<FeatHelpers.SpellTag>())
+            {
+                return true;
+            }
+
+            // same as vanilla but only enumerates the spell levels of the pool
+            var knownSpells = __instance.EnumerateKnownAndAcquiredSpells(heroBuildingData, string.Empty);
+            var spellList = pointPool.SpellListOverride
+                ? pointPool.SpellListOverride
+                : spellFeature.SpellListDefinition;
+            var service = ServiceRepository.GetService<IGamingPlatformService>();
+            var spells = new List<SpellDefinition>();
+
+            for (var level = pointPool.MaxSpellLevel; level >= Math.Max(1, pointPool.MinSpellLevel); level--)
+            {
+                spells.AddRange(spellList.GetSpellsOfLevel(level)
+                    .Where(spell =>
+                        !knownSpells.Contains(spell) &&
+                        service.IsContentPackAvailable(spell.ContentPack) &&
+                        (spellFeature.RestrictedSchools.Count == 0 ||
+                         spellFeature.RestrictedSchools.Contains(spell.SchoolOfMagic))));
+            }
+
+            spells.Sort(heroBuildingData.SpellComparer);
+
+            var remainingPoints = pointPool.RemainingPoints;
+
+            while (spells.Count > 0 && remainingPoints > 0)
+            {
+                var index = rng?.Next(spells.Count) ?? 0;
+
+                __instance.AcquireSpell(heroBuildingData, spells[index], spellTag, true, mode);
+                spells.RemoveAt(index);
+                remainingPoints--;
+            }
+
+            return false;
+        }
+    }
+
     [HarmonyPatch(typeof(CharacterBuildingManager), nameof(CharacterBuildingManager.IsFeatMatchingPrerequisites))]
     [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
     [UsedImplicitly]
