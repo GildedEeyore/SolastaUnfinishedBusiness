@@ -108,7 +108,14 @@ internal static class WizardTheurgy
             var spellListDomain = BuildDomainSpellList(domain);
             var magicAffinityArcaneInitiate = FeatureDefinitionMagicAffinityBuilder
                 .Create($"MagicAffinity{Name}ArcaneInitiate{domain.Name}")
-                .SetGuiPresentation($"MagicAffinity{Name}ArcaneInitiate", Category.Feature)
+                .SetGuiPresentation(
+                    Gui.Localize($"Feature/&MagicAffinity{Name}ArcaneInitiateTitle"),
+                    // spells in one line instead of the usual list by level, to fit the subclass selection screen
+                    Gui.Format($"Feature/&MagicAffinity{Name}ArcaneInitiateDescription",
+                        string.Join(", ", spellListDomain.SpellsByLevel
+                            .SelectMany(x => x.Spells)
+                            .OrderBy(x => x.SpellLevel)
+                            .Select(x => x.FormatTitle()))))
                 .SetExtendedSpellList(spellListDomain)
                 .AddToDB();
 
@@ -192,31 +199,45 @@ internal static class WizardTheurgy
                 }
             }
 
-            // one entry per level that spells out what this domain grants there
+            // the subclass selection screen doesn't scroll, so level 2 is one short entry naming the options,
+            // while higher levels get a short header plus the domain features as their own entries
             foreach (var kvp in featuresByLevel)
             {
                 var level = kvp.Key;
                 var features = kvp.Value;
                 var setName = DomainFeatureSetNames[level];
-                var featureList = string.Join("\n", features
+                var featureTitles = string.Join(", ", features
                     .Where(x => !x.GuiPresentation.Hidden)
-                    .Select(x => Gui.Format($"Feature/&FeatureSet{Name}DomainFeatureFormat",
-                        x.FormatTitle(), x.FormatDescription())));
+                    .Select(x => x.FormatTitle()));
 
-                if (featureList == string.Empty)
+                if (featureTitles == string.Empty)
                 {
-                    featureList = Gui.Localize($"Feature/&FeatureSet{Name}NoDomainFeatures");
+                    featureTitles = Gui.Localize($"Feature/&Feature{Name}NoDomainFeatures");
                 }
 
-                var featureSet = FeatureDefinitionFeatureSetBuilder
-                    .Create($"FeatureSet{Name}{setName}{domain.Name}")
-                    .SetGuiPresentation(
-                        Gui.Localize($"Feature/&FeatureSet{Name}{setName}Title"),
-                        Gui.Format($"Feature/&FeatureSet{Name}{setName}Description", featureList))
-                    .SetFeatureSet([.. features])
+                var title = Gui.Localize($"Feature/&Feature{Name}{setName}Title");
+                var description = Gui.Format($"Feature/&Feature{Name}{setName}Description", featureTitles);
+
+                if (level == 2)
+                {
+                    var featureSet = FeatureDefinitionFeatureSetBuilder
+                        .Create($"FeatureSet{Name}{setName}{domain.Name}")
+                        .SetGuiPresentation(title, description)
+                        .SetFeatureSet([.. features])
+                        .AddToDB();
+
+                    unlocks.Add(new FeatureUnlockByLevel(featureSet, level));
+
+                    continue;
+                }
+
+                var featureHeader = FeatureDefinitionBuilder
+                    .Create($"Feature{Name}{setName}{domain.Name}")
+                    .SetGuiPresentation(title, description)
                     .AddToDB();
 
-                unlocks.Add(new FeatureUnlockByLevel(featureSet, level));
+                unlocks.Add(new FeatureUnlockByLevel(featureHeader, level));
+                unlocks.AddRange(features.Select(x => new FeatureUnlockByLevel(x, level)));
             }
 
             variant.FeatureUnlocks.AddRange(unlocks);
