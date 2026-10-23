@@ -1013,8 +1013,7 @@ internal static class ArcanaUnleashedFeats
                     Shatter,
                     Fireball,
                     SpellsContext.VitriolicSphere,
-                    // Wall of Force exists in the database but vanilla flags it as not implemented so it can't be cast
-                    ConeOfCold))
+                    WallOfForce))
             .SetSpellcastingClass(null)
             .SetAutoTag(FAMILY)
             .AddToDB();
