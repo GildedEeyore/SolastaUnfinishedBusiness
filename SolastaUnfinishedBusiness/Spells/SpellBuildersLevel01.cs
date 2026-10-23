@@ -741,6 +741,78 @@ internal static partial class SpellBuilders
 
     #endregion
 
+    #region Wardaway
+
+    private static SpellDefinition _spellWardaway;
+
+    internal static SpellDefinition BuildWardaway()
+    {
+        const string NAME = "Wardaway";
+
+        // can take only an action or a bonus action, not both
+        var actionAffinityWardaway = FeatureDefinitionActionAffinityBuilder
+            .Create($"ActionAffinity{NAME}")
+            .SetGuiPresentationNoContent(true)
+            .AddToDB();
+
+        actionAffinityWardaway.eitherMainOrBonus = true;
+
+        var conditionWardaway = ConditionDefinitionBuilder
+            .Create($"Condition{NAME}")
+            .SetGuiPresentation(NAME, Category.Spell, ConditionSlowed)
+            .SetPossessive()
+            .SetConditionType(ConditionType.Detrimental)
+            .SetFeatures(actionAffinityWardaway, MovementAffinityConditionSlowed)
+            .AddToDB();
+
+        conditionWardaway.GuiPresentation.description = Gui.EmptyContent;
+
+        _spellWardaway = SpellDefinitionBuilder
+            .Create(NAME)
+            .SetGuiPresentation(Category.Spell, Slow)
+            .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolAbjuration)
+            .SetSpellLevel(1)
+            .SetCastingTime(ActivationTime.Action)
+            .SetMaterialComponent(MaterialComponentType.Mundane)
+            .SetVerboseComponent(true)
+            .SetSomaticComponent(true)
+            .SetVocalSpellSameType(VocalSpellSemeType.Attack)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetDurationData(DurationType.Round, 1, TurnOccurenceType.StartOfTurn)
+                    .SetTargetingData(Side.All, RangeType.Distance, 12, TargetType.IndividualsUnique)
+                    .SetEffectAdvancement(EffectIncrementMethod.PerAdditionalSlotLevel, additionalDicePerIncrement: 2)
+                    .SetSavingThrowData(false, AttributeDefinitions.Constitution, false,
+                        EffectDifficultyClassComputation.SpellCastingFeature)
+                    .SetEffectForms(
+                        EffectFormBuilder
+                            .Create()
+                            .HasSavingThrow(EffectSavingThrowType.HalfDamage)
+                            .SetDamageForm(DamageTypeForce, 2, DieType.D4)
+                            .Build(),
+                        EffectFormBuilder
+                            .Create()
+                            .HasSavingThrow(EffectSavingThrowType.Negates)
+                            .SetConditionForm(conditionWardaway, ConditionForm.ConditionOperation.Add)
+                            .Build())
+                    .SetParticleEffectParameters(MagicMissile)
+                    .Build())
+            .AddToDB();
+
+        return _spellWardaway;
+    }
+
+    // called from MyRollSavingThrow: constructs and undead automatically succeed on the saving throw
+    internal static bool AutomaticallySavesAgainstWardaway(BaseDefinition sourceDefinition, RulesetCharacter target)
+    {
+        return _spellWardaway &&
+               sourceDefinition == _spellWardaway &&
+               target.CharacterFamily is "Construct" or "Undead";
+    }
+
+    #endregion
+
     #region Vile Brew
 
     internal static SpellDefinition BuildVileBrew()

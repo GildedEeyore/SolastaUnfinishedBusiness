@@ -13,6 +13,7 @@ using SolastaUnfinishedBusiness.Behaviors.Specific;
 using SolastaUnfinishedBusiness.Feats;
 using SolastaUnfinishedBusiness.Interfaces;
 using SolastaUnfinishedBusiness.Models;
+using SolastaUnfinishedBusiness.Spells;
 using SolastaUnfinishedBusiness.Subclasses;
 using SolastaUnfinishedBusiness.Validators;
 using UnityEngine;
@@ -365,6 +366,27 @@ public static class RulesetImplementationManagerPatcher
             CollegeOfAudacity.HandleDefensiveWhirl(rulesetCharacter, damageForm, damage);
 
             return damage;
+        }
+
+        // the target whose successful save negates the damage instead of halving it, while this damage form applies
+        internal static RulesetActor ElminstersElusionTarget { get; private set; }
+
+        //PATCH: supports Elminster's Elusion through RulesetActor.HasSpecialHalfDamage
+        [UsedImplicitly]
+        public static void Prefix(EffectForm effectForm, RulesetImplementationDefinitions.ApplyFormsParams formsParams)
+        {
+            ElminstersElusionTarget =
+                formsParams.rolledSaveThrow &&
+                SpellBuilders.HasElminstersElusionNoDamage(
+                    formsParams.targetCharacter, formsParams.activeEffect, effectForm, formsParams.saveOutcome)
+                    ? formsParams.targetCharacter
+                    : null;
+        }
+
+        [UsedImplicitly]
+        public static void Postfix()
+        {
+            ElminstersElusionTarget = null;
         }
 
         [UsedImplicitly]
