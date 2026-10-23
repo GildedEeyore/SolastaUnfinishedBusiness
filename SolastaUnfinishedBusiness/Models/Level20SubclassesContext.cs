@@ -32,7 +32,7 @@ internal static class Level20SubclassesContext
 {
     private const string Tag = "PowerClericImprovedDivineIntervention";
 
-    private static readonly FeatureDefinitionPower PowerClericDivineInterventionImprovementCleric =
+    internal static readonly FeatureDefinitionPower PowerClericDivineInterventionImprovementCleric =
         FeatureDefinitionPowerBuilder
             .Create(PowerClericDivineInterventionCleric, "PowerClericDivineInterventionImprovementCleric")
             .SetOrUpdateGuiPresentation(Tag, Category.Feature)

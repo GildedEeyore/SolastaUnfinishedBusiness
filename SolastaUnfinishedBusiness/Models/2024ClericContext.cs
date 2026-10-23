@@ -375,6 +375,7 @@ public static partial class Tabletop2024Context
         {
             ("DomainArcana", "FeatureDomainArcanaPotentSpellcasting", string.Empty),
             ("DomainDefiler", "AdditionalDamageDomainDefilerDivineStrike", string.Empty),
+            ("DomainGrave", "FeatureDomainGravePotentSpellcasting", string.Empty),
             ("DomainLife", "AdditionalDamageDomainLifeDivineStrike", string.Empty),
             ("DomainMischief", "AdditionalDamageDomainMischiefDivineStrike", DamageTypePsychic),
             ("DomainNature", "FeatureSetDomainNatureNatureStrikes", DamageTypeCold),
