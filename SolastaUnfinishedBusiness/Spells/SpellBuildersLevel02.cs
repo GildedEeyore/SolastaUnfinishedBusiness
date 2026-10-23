@@ -1436,6 +1436,124 @@ internal static partial class SpellBuilders
 
     #endregion
 
+    #region Gentle Repose
+
+    private static ConditionDefinition _conditionGentleRepose;
+    private const int GentleReposeDurationSeconds = 10 * 24 * 60 * 60;
+
+    internal static SpellDefinition BuildGentleRepose()
+    {
+        const string NAME = "GentleRepose";
+
+        // the condition is removed when the target is revived
+        _conditionGentleRepose = ConditionDefinitionBuilder
+            .Create($"Condition{NAME}")
+            .SetGuiPresentation(NAME, Category.Spell, ConditionBlessed)
+            .SetPossessive()
+            .SetSpecialInterruptions(ConditionInterruption.Revive)
+            .AddCustomSubFeatures(new OnConditionAddedOrRemovedGentleRepose())
+            .AddToDB();
+
+        var spell = SpellDefinitionBuilder
+            .Create(NAME)
+            .SetGuiPresentation(Category.Spell, SpareTheDying)
+            .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolNecromancy)
+            .SetSpellLevel(2)
+            .SetCastingTime(ActivationTime.Action)
+            .SetRitualCasting(ActivationTime.Minute10)
+            .SetMaterialComponent(MaterialComponentType.Mundane)
+            .SetVerboseComponent(true)
+            .SetSomaticComponent(true)
+            .SetVocalSpellSameType(VocalSpellSemeType.Healing)
+            .SetRequiresConcentration(false)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetDurationData(DurationType.Day, 10)
+                    .SetTargetingData(Side.Ally, RangeType.Touch, 0, TargetType.IndividualsUnique)
+                    .SetRequiredCondition(ConditionDefinitions.ConditionDead)
+                    .SetEffectForms(EffectFormBuilder.ConditionForm(_conditionGentleRepose))
+                    .SetParticleEffectParameters(SpareTheDying)
+                    .Build())
+            .AddToDB();
+
+        return spell;
+    }
+
+    // called before the game reads a dead character's time of death: days spent under Gentle Repose don't count
+    // against the time limit of spells such as Revivify and Raise Dead, so that time is added to the time of death
+    internal static void PauseDeathClockUnderGentleRepose(
+        RulesetCharacter rulesetCharacter, RulesetCondition removedCondition = null)
+    {
+        if (!_conditionGentleRepose || rulesetCharacter == null)
+        {
+            return;
+        }
+
+        var conditions = rulesetCharacter.AllConditions
+            .Where(x => x.ConditionDefinition == _conditionGentleRepose)
+            .ToList();
+
+        if (removedCondition != null && !conditions.Contains(removedCondition))
+        {
+            conditions.Add(removedCondition);
+        }
+
+        var gameTime = ServiceRepository.GetService<IGameService>()?.Game?.GameCampaign?.GameTime;
+
+        if (conditions.Count == 0 || gameTime == null)
+        {
+            return;
+        }
+
+        var timeCode = gameTime.GetTimeCode();
+        var synced = conditions.Where(x => x.Amount != int.MinValue).ToList();
+        var credited = 0;
+
+        if (synced.Count > 0)
+        {
+            // never credit more than the spell's duration, as time can pass in large steps such as a long rest
+            var syncedUntil = synced.Max(x => x.Amount);
+            var allowance = synced.Max(x => GentleReposeDurationSeconds - x.SourceProficiencyBonus);
+
+            credited = Math.Max(0, Math.Min(timeCode - syncedUntil, allowance));
+            rulesetCharacter.timeOfDeath += credited;
+        }
+
+        foreach (var condition in conditions)
+        {
+            // Amount holds the time code the death clock is synced to, SourceProficiencyBonus the seconds credited
+            if (condition.Amount == int.MinValue)
+            {
+                condition.SourceProficiencyBonus = 0;
+            }
+            else
+            {
+                condition.SourceProficiencyBonus += credited;
+            }
+
+            condition.Amount = timeCode;
+        }
+    }
+
+    private sealed class OnConditionAddedOrRemovedGentleRepose : IOnConditionAddedOrRemoved
+    {
+        public void OnConditionAdded(RulesetCharacter target, RulesetCondition rulesetCondition)
+        {
+            // credits the time under an earlier casting, then starts this one from now
+            rulesetCondition.Amount = int.MinValue;
+            PauseDeathClockUnderGentleRepose(target, rulesetCondition);
+        }
+
+        public void OnConditionRemoved(RulesetCharacter target, RulesetCondition rulesetCondition)
+        {
+            // credits the time under this casting up to when it ends
+            PauseDeathClockUnderGentleRepose(target, rulesetCondition);
+        }
+    }
+
+    #endregion
+
     #region Dragons Breath
 
     internal static SpellDefinition BuildDragonsBreath()

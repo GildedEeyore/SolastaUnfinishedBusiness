@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -15,6 +15,7 @@ using SolastaUnfinishedBusiness.Behaviors.Specific;
 using SolastaUnfinishedBusiness.Builders;
 using SolastaUnfinishedBusiness.Interfaces;
 using SolastaUnfinishedBusiness.Models;
+using SolastaUnfinishedBusiness.Spells;
 using SolastaUnfinishedBusiness.Subclasses;
 using SolastaUnfinishedBusiness.Validators;
 using UnityEngine;
@@ -474,6 +475,19 @@ public static class RulesetCharacterPatcher
         }
     }
 #endif
+
+    [HarmonyPatch(typeof(RulesetCharacter), nameof(RulesetCharacter.Revive))]
+    [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
+    [UsedImplicitly]
+    public static class Revive_Patch
+    {
+        [UsedImplicitly]
+        public static void Prefix(RulesetCharacter __instance)
+        {
+            //PATCH: supports Gentle Repose, whose days don't count against the time limit of revive spells
+            SpellBuilders.PauseDeathClockUnderGentleRepose(__instance);
+        }
+    }
 
     [HarmonyPatch(typeof(RulesetCharacter), nameof(RulesetCharacter.OnConditionRemoved))]
     [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
