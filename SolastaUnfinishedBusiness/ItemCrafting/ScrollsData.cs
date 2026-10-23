@@ -66,6 +66,13 @@ internal static class ScrollsData
             BuildScroll(spell);
         }
 
+        AddScrollRecipes();
+
+        foreach (var merchant in DatabaseRepository.GetDatabase<MerchantDefinition>())
+        {
+            AddScrollRecipesToMerchant(merchant);
+        }
+
         if (Main.Settings.AddNewScrollsToShops)
         {
             AddScrollsToMerchants();
@@ -81,6 +88,79 @@ internal static class ScrollsData
             if (!IsScrollItem(item)) { continue; }
 
             item.ItemPresentation.ItemFlags.TryAdd(ScrollSpellFlag);
+        }
+    }
+
+    // crafting manuals for scrolls of spells added by the mod, sold wherever the base game's manual of the same spell
+    // level is sold
+    private static readonly Dictionary<ItemDefinition, ItemDefinition> ScrollManualsByVanillaManual = [];
+
+    private static void AddScrollRecipes()
+    {
+        AddScrollRecipe("GentleRepose", ItemDefinitions.CraftingManualScrollOfLesserRestoration,
+            ItemDefinitions.Ingredient_TrollAcanthus,
+            ItemDefinitions.Ingredient_Moonflower,
+            ItemDefinitions.Ingredient_AbyssMoss);
+    }
+
+    private static void AddScrollRecipe(
+        string spellName, ItemDefinition vanillaManual, params ItemDefinition[] ingredients)
+    {
+        var scroll = ScrollsByLevel.Values
+            .SelectMany(x => x)
+            .FirstOrDefault(x => x.Name == $"Scroll_{spellName}");
+
+        if (!scroll)
+        {
+            return;
+        }
+
+        var spell = GetScrollSpell(scroll);
+        var vanillaRecipe = vanillaManual.DocumentDescription.RecipeDefinition;
+        var scrollTitle = GuiItemTweaks.FormatTitle(scroll);
+
+        // same crafting time, DC and tool as the base game's scroll recipes of that spell level; crafting it also
+        // requires knowing the spell
+        var recipe = RecipeDefinitionBuilder
+            .Create($"RecipeScroll_L{spell.SpellLevel}_Of{spellName}")
+            .SetGuiPresentation(scrollTitle, GuiItemTweaks.FormatDescription(scroll))
+            .SetCraftedItem(scroll)
+            .SetCraftingCheckData(
+                vanillaRecipe.CraftingHours, vanillaRecipe.CraftingDC, vanillaRecipe.ToolType)
+            .AddIngredients(ingredients)
+            .AddToDB();
+
+        recipe.spellDefinition = spell;
+
+        // the base game formats the manual title with the crafted item title, which for mod scrolls is a format
+        // itself, so the title and description are formatted here
+        var manual = ItemDefinitionBuilder
+            .Create(vanillaManual, $"CraftingManualScrollOf{spellName}")
+            .SetGuiPresentation(
+                Gui.Format(vanillaManual.GuiPresentation.Title, scrollTitle),
+                Gui.Format(vanillaManual.GuiPresentation.Description, scrollTitle),
+                vanillaManual)
+            .SetDocumentInformation(recipe, vanillaManual.DocumentDescription.ContentFragments)
+            .HideFromDungeonEditor()
+            .AddToDB();
+
+        ScrollManualsByVanillaManual[vanillaManual] = manual;
+    }
+
+    internal static void AddScrollRecipesToMerchant(MerchantDefinition merchant)
+    {
+        foreach (var stock in merchant.StockUnitDescriptions.ToList())
+        {
+            if (!stock.ItemDefinition ||
+                !ScrollManualsByVanillaManual.TryGetValue(stock.ItemDefinition, out var manual) ||
+                merchant.StockUnitDescriptions.Any(x => x.ItemDefinition == manual))
+            {
+                continue;
+            }
+
+            merchant.StockUnitDescriptions.Add(StockUnitDescriptionBuilder.From(stock)
+                .SetItem(manual)
+                .Build());
         }
     }
 

@@ -20,6 +20,7 @@ public static class UserMerchantInventoryPatcher
             //PATCH: supports adding custom items to dungeon maker traders
             MerchantContext.TryAddItemsToUserMerchant(__result);
             ScrollsData.AddScrollsToMerchant(__result);
+            ScrollsData.AddScrollRecipesToMerchant(__result);
         }
     }
 }

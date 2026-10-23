@@ -2994,6 +2994,9 @@ internal static partial class DatabaseHelper
         internal static ItemDefinition CraftingManualScrollOfVampiricTouch { get; } =
             GetDefinition<ItemDefinition>("CraftingManualScrollOfVampiricTouch");
 
+        internal static ItemDefinition CraftingManualScrollOfLesserRestoration { get; } =
+            GetDefinition<ItemDefinition>("CraftingManualScrollOfLesserRestoration");
+
         internal static ItemDefinition CrownOfTheMagister { get; } =
             GetDefinition<ItemDefinition>("CrownOfTheMagister");
 
@@ -3218,6 +3221,12 @@ internal static partial class DatabaseHelper
 
         internal static ItemDefinition Ingredient_AbyssMoss { get; } =
             GetDefinition<ItemDefinition>("Ingredient_AbyssMoss");
+
+        internal static ItemDefinition Ingredient_TrollAcanthus { get; } =
+            GetDefinition<ItemDefinition>("Ingredient_TrollAcanthus");
+
+        internal static ItemDefinition Ingredient_Moonflower { get; } =
+            GetDefinition<ItemDefinition>("Ingredient_Moonflower");
 
         internal static ItemDefinition Ingredient_Acid { get; } = GetDefinition<ItemDefinition>("Ingredient_Acid");
 
