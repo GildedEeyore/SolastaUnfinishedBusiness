@@ -85,7 +85,7 @@ internal static class ArcanaUnleashedFeats
     }
 
     // same die selection as vanilla RulesetCharacterHero.RollHitDie: the largest die type still available
-    private static DieType ExpendHitDie(RulesetCharacterHero hero)
+    internal static DieType ExpendHitDie(RulesetCharacterHero hero)
     {
         var dieType = DieType.D1;
         var maxValue = 0;

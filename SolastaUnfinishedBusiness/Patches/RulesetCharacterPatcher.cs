@@ -983,6 +983,19 @@ public static class RulesetCharacterPatcher
         }
     }
 
+    //PATCH: support for Spellfire Sorcery Spellfire Burst, which triggers when sorcery points are spent
+    [HarmonyPatch(typeof(RulesetCharacter), nameof(RulesetCharacter.SpendSorceryPoints))]
+    [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
+    [UsedImplicitly]
+    public static class SpendSorceryPoints_Patch
+    {
+        [UsedImplicitly]
+        public static void Postfix(RulesetCharacter __instance, int spentPoints)
+        {
+            SorcerousSpellfire.OnSorceryPointsSpent(__instance, spentPoints);
+        }
+    }
+
     //PATCH: ensures that original character sorcery point pool is in sync with substitute (Multiclass)
     [HarmonyPatch(typeof(RulesetCharacter), nameof(RulesetCharacter.GainSorceryPoints))]
     [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
