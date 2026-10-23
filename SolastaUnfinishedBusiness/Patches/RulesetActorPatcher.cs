@@ -92,6 +92,7 @@ public static class RulesetActorPatcher
     }
 
     //PATCH: support for Spellfire Sorcery Spell Avoidance, which works like Evasion on any saving throw
+    //PATCH: support for Elminster's Elusion, which negates the damage on a successful save against magic
     [HarmonyPatch(typeof(RulesetActor), nameof(RulesetActor.HasSpecialHalfDamage))]
     [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
     [UsedImplicitly]
@@ -100,7 +101,9 @@ public static class RulesetActorPatcher
         [UsedImplicitly]
         public static void Postfix(RulesetActor __instance, ref bool __result)
         {
-            __result = __result || SorcerousSpellfire.HasSpellAvoidance(__instance);
+            __result = __result ||
+                       SorcerousSpellfire.HasSpellAvoidance(__instance) ||
+                       RulesetImplementationManagerPatcher.ApplyDamageForm_Patch.ElminstersElusionTarget == __instance;
         }
     }
 

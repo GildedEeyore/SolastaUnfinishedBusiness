@@ -313,17 +313,20 @@ internal static class SpellsContext
         RegisterSpell(ThunderousSmite, 0, SpellListPaladin);
         RegisterSpell(BuildVileBrew(), 0, SpellListSorcerer, SpellListWizard, spellListInventorClass);
         RegisterSpell(BuildVoidGrasp(), 0, SpellListWarlock);
+        RegisterSpell(BuildWardaway(), 0, SpellListBard, SpellListCleric, SpellListPaladin, SpellListWizard);
         RegisterSpell(BuildWitchBolt(), 0, SpellListSorcerer, SpellListWarlock, SpellListWizard);
         RegisterSpell(WrathfulSmite, 0, SpellListPaladin);
 
         // 2nd level
         RegisterSpell(BuildAganazzarScorcher(), 0, SpellListSorcerer, SpellListWizard);
+        RegisterSpell(BuildArcaneVigor(), 0, SpellListSorcerer, SpellListWizard, spellListInventorClass);
         RegisterSpell(BindingIce, 0, SpellListSorcerer, SpellListWizard);
         RegisterSpell(BuildBorrowedKnowledge(), 0, SpellListBard, SpellListCleric, SpellListWarlock, SpellListWizard);
         RegisterSpell(BuildCloudOfDaggers(), 0, SpellListBard, SpellListSorcerer, SpellListWarlock, SpellListWizard);
         RegisterSpell(ColorBurst, 0, SpellListSorcerer, SpellListWizard, spellListInventorClass);
         ConjureGoblinoids.contentPack = CeContentPackContext.CeContentPack;
         RegisterSpell(ConjureGoblinoids, 0, SpellListDruid, SpellListRanger);
+        RegisterSpell(BuildElminstersElusion(), 0, SpellListWizard);
         RegisterSpell(BuildKineticJaunt(), 0, SpellListBard, SpellListSorcerer, SpellListWizard,
             spellListInventorClass);
         RegisterSpell(BuildDragonsBreath(), 0, SpellListSorcerer, SpellListWizard);

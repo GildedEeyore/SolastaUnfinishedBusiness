@@ -749,6 +749,9 @@ internal static partial class DatabaseHelper
         internal static ConditionDefinition ConditionShielded { get; } =
             GetDefinition<ConditionDefinition>("ConditionShielded");
 
+        internal static ConditionDefinition ConditionShieldedByFaith { get; } =
+            GetDefinition<ConditionDefinition>("ConditionShieldedByFaith");
+
         internal static ConditionDefinition ConditionShine { get; } =
             GetDefinition<ConditionDefinition>("ConditionShine");
 
@@ -4216,6 +4219,7 @@ internal static partial class DatabaseHelper
         internal static SpellDefinition Slow { get; } = GetDefinition<SpellDefinition>("Slow");
         internal static SpellDefinition SpareTheDying { get; } = GetDefinition<SpellDefinition>("SpareTheDying");
         internal static SpellDefinition Sparkle { get; } = GetDefinition<SpellDefinition>("Sparkle");
+        internal static SpellDefinition SpellWard { get; } = GetDefinition<SpellDefinition>("SpellWard");
         internal static SpellDefinition SpiderClimb { get; } = GetDefinition<SpellDefinition>("SpiderClimb");
         internal static SpellDefinition SpikeGrowth { get; } = GetDefinition<SpellDefinition>("SpikeGrowth");
         internal static SpellDefinition SpiritGuardians { get; } = GetDefinition<SpellDefinition>("SpiritGuardians");

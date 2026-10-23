@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
@@ -10,6 +11,7 @@ using SolastaUnfinishedBusiness.Behaviors.Specific;
 using SolastaUnfinishedBusiness.Builders;
 using SolastaUnfinishedBusiness.Builders.Features;
 using SolastaUnfinishedBusiness.CustomUI;
+using SolastaUnfinishedBusiness.Feats;
 using SolastaUnfinishedBusiness.Interfaces;
 using SolastaUnfinishedBusiness.Models;
 using SolastaUnfinishedBusiness.Properties;
@@ -1180,6 +1182,255 @@ internal static partial class SpellBuilders
                         $"{value - modifier}+{modifier}"),
                     (ConsoleStyleDuplet.ParameterType.Positive, $"{value}")
                 ]);
+        }
+    }
+
+    #endregion
+
+    #region Arcane Vigor
+
+    internal static SpellDefinition BuildArcaneVigor()
+    {
+        const string NAME = "ArcaneVigor";
+
+        var spell = SpellDefinitionBuilder
+            .Create(NAME)
+            .SetGuiPresentation(Category.Spell, FalseLife)
+            .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolAbjuration)
+            .SetSpellLevel(2)
+            .SetCastingTime(ActivationTime.BonusAction)
+            .SetMaterialComponent(MaterialComponentType.None)
+            .SetVerboseComponent(true)
+            .SetSomaticComponent(true)
+            .SetVocalSpellSameType(VocalSpellSemeType.Healing)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetTargetingData(Side.Ally, RangeType.Self, 0, TargetType.Self)
+                    // lets the spell be cast with a higher slot, the extra Hit Dice are handled on finish
+                    .SetEffectAdvancement(EffectIncrementMethod.PerAdditionalSlotLevel)
+                    .SetParticleEffectParameters(CureWounds)
+                    .Build())
+            .AddToDB();
+
+        spell.AddCustomSubFeatures(new PowerOrSpellFinishedByMeArcaneVigor(spell));
+
+        return spell;
+    }
+
+    private sealed class PowerOrSpellFinishedByMeArcaneVigor(SpellDefinition spellArcaneVigor)
+        : IPowerOrSpellFinishedByMe
+    {
+        private const string ArcaneVigor = "ArcaneVigor";
+
+        public IEnumerator OnPowerOrSpellFinishedByMe(CharacterActionMagicEffect action, BaseDefinition baseDefinition)
+        {
+            if (action.Countered ||
+                action.ExecutionFailed ||
+                action.ActionParams.RulesetEffect is not RulesetEffectSpell rulesetEffectSpell)
+            {
+                yield break;
+            }
+
+            var caster = action.ActingCharacter;
+            var rulesetCaster = caster.RulesetCharacter;
+            var rulesetHero = rulesetCaster.GetOriginalHero();
+
+            if (rulesetHero == null)
+            {
+                yield break;
+            }
+
+            var remainingHitDice = rulesetHero.RemainingHitDiceCount();
+
+            if (remainingHitDice <= 0)
+            {
+                rulesetCaster.LogCharacterActivatesAbility(
+                    spellArcaneVigor.GuiPresentation.Title, "Feedback/&ArcaneVigorNoHitDice");
+
+                yield break;
+            }
+
+            // one or two dice at 2nd level, one more for each slot level above 2nd
+            var maxHitDice = rulesetEffectSpell.SlotLevel;
+            var hitDiceToSpend = 1;
+
+            if (remainingHitDice > 1)
+            {
+                var options = new List<(string, bool)>();
+
+                for (var dice = 1; dice <= maxHitDice; dice++)
+                {
+                    options.Add((
+                        dice == 1
+                            ? Gui.Localize("Reaction/&CustomReactionArcaneVigorOneDie")
+                            : Gui.Format("Reaction/&CustomReactionArcaneVigorDice", dice.ToString()),
+                        dice <= remainingHitDice));
+                }
+
+                // the option index is the dice count minus one, and a dismissed prompt rolls a single die
+                yield return caster.MyReactToSelectOption(
+                    caster,
+                    ArcaneVigor,
+                    "CustomReactionArcaneVigorDescription".Formatted(
+                        Category.Reaction, remainingHitDice.ToString(), maxHitDice.ToString()),
+                    options,
+                    option => hitDiceToSpend = option + 1);
+            }
+
+            var rolls = new List<string>();
+            var total = 0;
+
+            for (var i = 0; i < hitDiceToSpend; i++)
+            {
+                var dieType = ArcanaUnleashedFeats.ExpendHitDie(rulesetHero);
+
+                if (dieType == DieType.D1)
+                {
+                    break;
+                }
+
+                var roll = RollDie(dieType, AdvantageType.None, out _, out _);
+
+                rulesetCaster.ShowDieRoll(dieType, roll, title: spellArcaneVigor.GuiPresentation.Title);
+                rolls.Add($"{Gui.FormatDieTitle(dieType)}:{roll}");
+                total += roll;
+            }
+
+            if (rolls.Count == 0)
+            {
+                yield break;
+            }
+
+            var abilityModifier = rulesetEffectSpell.ComputeSourceAbilityBonus(rulesetCaster);
+            var healing = Math.Max(0, total + abilityModifier);
+
+            rulesetCaster.LogCharacterActivatesAbility(
+                spellArcaneVigor.GuiPresentation.Title,
+                "Feedback/&ArcaneVigorHitDiceRolled",
+                extra:
+                [
+                    (ConsoleStyleDuplet.ParameterType.AbilityInfo, string.Join(", ", rolls)),
+                    (ConsoleStyleDuplet.ParameterType.Positive, abilityModifier.ToString("+0;-#")),
+                    (ConsoleStyleDuplet.ParameterType.Positive, healing.ToString())
+                ]);
+
+            rulesetCaster.ReceiveHealing(healing, true, rulesetCaster.Guid);
+        }
+    }
+
+    #endregion
+
+    #region Elminster's Elusion
+
+    private static ConditionDefinition _conditionElminstersElusion;
+    private static HashSet<FeatureDefinitionPower> _magicItemPowers;
+
+    internal static SpellDefinition BuildElminstersElusion()
+    {
+        const string NAME = "ElminstersElusion";
+
+        var featureElminstersElusion = FeatureDefinitionBuilder
+            .Create($"Feature{NAME}")
+            .SetGuiPresentationNoContent(true)
+            .AddToDB();
+
+        _conditionElminstersElusion = ConditionDefinitionBuilder
+            .Create($"Condition{NAME}")
+            .SetGuiPresentation(NAME, Category.Spell, ConditionShieldedByFaith)
+            .SetPossessive()
+            .SetFeatures(featureElminstersElusion)
+            .AddToDB();
+
+        featureElminstersElusion.AddCustomSubFeatures(
+            new RollSavingThrowInitiatedElminstersElusion(_conditionElminstersElusion));
+
+        var spell = SpellDefinitionBuilder
+            .Create(NAME)
+            .SetGuiPresentation(Category.Spell, SpellWard)
+            .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolAbjuration)
+            .SetSpellLevel(2)
+            .SetCastingTime(ActivationTime.BonusAction)
+            .SetMaterialComponent(MaterialComponentType.None)
+            .SetVerboseComponent(true)
+            .SetSomaticComponent(true)
+            .SetVocalSpellSameType(VocalSpellSemeType.Defense)
+            .SetRequiresConcentration(true)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetDurationData(DurationType.Minute, 10)
+                    .SetTargetingData(Side.Ally, RangeType.Self, 0, TargetType.Self)
+                    .SetEffectForms(EffectFormBuilder.ConditionForm(_conditionElminstersElusion))
+                    .SetParticleEffectParameters(GlobeOfInvulnerability)
+                    .Build())
+            .AddToDB();
+
+        return spell;
+    }
+
+    // spells (including the ones cast from scrolls or items) and powers granted by magic items
+    private static bool IsSpellOrMagicItemPower(BaseDefinition sourceDefinition)
+    {
+        if (sourceDefinition is SpellDefinition)
+        {
+            return true;
+        }
+
+        if (sourceDefinition is not FeatureDefinitionPower power)
+        {
+            return false;
+        }
+
+        _magicItemPowers ??= DatabaseRepository.GetDatabase<ItemDefinition>()
+            .Where(x => x.IsUsableDevice)
+            .SelectMany(x => x.UsableDeviceDescription.DeviceFunctions)
+            .Where(x => x.Type == DeviceFunctionDescription.FunctionType.Power && x.FeatureDefinitionPower)
+            .Select(x => x.FeatureDefinitionPower)
+            .ToHashSet();
+
+        return _magicItemPowers.Contains(power);
+    }
+
+    // called from RulesetImplementationManager.ApplyDamageForm: a successful save against a spell or magical effect
+    // that would halve the damage negates it instead
+    internal static bool HasElminstersElusionNoDamage(
+        RulesetActor target, RulesetEffect activeEffect, EffectForm effectForm, RollOutcome saveOutcome)
+    {
+        return _conditionElminstersElusion &&
+               effectForm.SavingThrowAffinity == EffectSavingThrowType.HalfDamage &&
+               saveOutcome is RollOutcome.Success or RollOutcome.CriticalSuccess &&
+               activeEffect is RulesetEffectSpell or RulesetEffectPower { OriginItem: not null } &&
+               target is RulesetCharacter rulesetCharacter &&
+               rulesetCharacter.HasConditionOfType(_conditionElminstersElusion.Name);
+    }
+
+    private sealed class RollSavingThrowInitiatedElminstersElusion(ConditionDefinition conditionElminstersElusion)
+        : IRollSavingThrowInitiated
+    {
+        public void OnSavingThrowInitiated(
+            RulesetActor rulesetActorCaster,
+            RulesetActor rulesetActorDefender,
+            ref int saveBonus,
+            ref string abilityScoreName,
+            BaseDefinition sourceDefinition,
+            List<TrendInfo> modifierTrends,
+            List<TrendInfo> advantageTrends,
+            ref int rollModifier,
+            ref int saveDC,
+            ref bool hasHitVisual,
+            RollOutcome outcome,
+            int outcomeDelta,
+            List<EffectForm> effectForms)
+        {
+            if (!IsSpellOrMagicItemPower(sourceDefinition))
+            {
+                return;
+            }
+
+            advantageTrends.Add(
+                new TrendInfo(1, FeatureSourceType.Condition, conditionElminstersElusion.Name,
+                    conditionElminstersElusion));
         }
     }
 

@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
+using SolastaUnfinishedBusiness.Api.Helpers;
 using SolastaUnfinishedBusiness.Interfaces;
+using SolastaUnfinishedBusiness.Spells;
 using SolastaUnfinishedBusiness.Subclasses;
 using static RuleDefinitions;
 
@@ -89,6 +91,22 @@ internal static class RulesetActorExtensions
             OathOfDread.ConditionAspectOfDreadEnemy);
 
         var rulesetCharacterTarget = rulesetActorTarget as RulesetCharacter;
+
+        //PATCH: supports Wardaway, whose saving throw constructs and undead automatically succeed on
+        if (rulesetCharacterTarget != null &&
+            SpellBuilders.AutomaticallySavesAgainstWardaway(sourceDefinition, rulesetCharacterTarget))
+        {
+            outcome = RollOutcome.Success;
+            outcomeDelta = 0;
+            SaveDC = saveDC;
+            SaveBonusAndRollModifier = saveBonus + rollModifier;
+            SavingThrowAbility = abilityScoreName;
+
+            rulesetCharacterTarget.LogCharacterActivatesAbility(
+                sourceDefinition.GuiPresentation.Title, "Feedback/&WardawayAutomaticSuccess");
+
+            return;
+        }
 
         //BEGIN PATCH
         if (rulesetCharacterTarget != null)
