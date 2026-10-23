@@ -738,6 +738,9 @@ public static class GameLocationBattleManagerPatcher
             yield return SpellBuilders.CustomBehaviorRescueTheDying.HandleRescueTheDyingReaction(
                 __instance, attacker, downedCreature);
 
+            //PATCH: Support Grave Domain Keeper of Souls, which triggers when any enemy dies
+            yield return DomainGrave.HandleKeeperOfSouls(__instance, downedCreature);
+
             //PATCH: Support for `IOnReducedToZeroHpByMe` feature
             foreach (var onReducedToZeroHpByMe in
                      attacker.RulesetActor.GetSubFeaturesByType<IOnReducedToZeroHpByMe>())

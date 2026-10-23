@@ -65,6 +65,25 @@ public static class RulesetImplementationManagerPatcher
         }
     }
 
+    [HarmonyPatch(typeof(RulesetImplementationManager), nameof(RulesetImplementationManager.ApplyHealingForm))]
+    [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
+    [UsedImplicitly]
+    public static class ApplyHealingForm_Patch
+    {
+        [UsedImplicitly]
+        public static void Prefix(RulesetImplementationDefinitions.ApplyFormsParams formsParams)
+        {
+            //PATCH: supports Grave Domain Circle of Mortality, which maximizes healing dice on creatures at 0 hit points
+            DomainGrave.BeforeApplyHealingForm(formsParams);
+        }
+
+        [UsedImplicitly]
+        public static void Postfix()
+        {
+            DomainGrave.AfterApplyHealingForm();
+        }
+    }
+
     //PATCH: allow different algorithms to calculate critical damage
     [HarmonyPatch(typeof(RulesetImplementationManager), nameof(RulesetImplementationManager.ApplyDamageForm))]
     [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]

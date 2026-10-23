@@ -82,6 +82,22 @@ public static class RulesetCharacterPatcher
             !__instance.IsValid(x.GetAllSubFeaturesOfType<IsCharacterValidHandler>()));
     }
 
+    [HarmonyPatch(typeof(RulesetCharacter), nameof(RulesetCharacter.RollAndHeal))]
+    [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
+    [UsedImplicitly]
+    public static class RollAndHeal_Patch
+    {
+        [UsedImplicitly]
+        public static void Prefix(ref bool maximizeReceivedHealing)
+        {
+            //PATCH: supports Grave Domain Circle of Mortality, which maximizes healing dice on creatures at 0 hit points
+            if (DomainGrave.ShouldMaximizeHealingDice())
+            {
+                maximizeReceivedHealing = true;
+            }
+        }
+    }
+
     [HarmonyPatch(typeof(RulesetCharacter), nameof(RulesetCharacter.RefreshSizeParams))]
     [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
     [UsedImplicitly]
