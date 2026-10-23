@@ -36,6 +36,9 @@ internal static class ArcanaUnleashedFeats
         const string NAME = "FeatEvocationAdept";
         const string FAMILY = "EvocationAdept";
 
+        // vanilla flags Wall of Force as not implemented which keeps heroes from casting it
+        WallOfForce.implemented = true;
+
         // spells are only added to the repertoire once the caster has spell slots of the spell level
         var autoPreparedSpells = FeatureDefinitionAutoPreparedSpellsBuilder
             .Create($"AutoPreparedSpells{NAME}")
@@ -49,8 +52,7 @@ internal static class ArcanaUnleashedFeats
                     Shatter,
                     Fireball,
                     SpellsContext.VitriolicSphere,
-                    // Wall of Force exists in the database but vanilla flags it as not implemented so it can't be cast
-                    ConeOfCold))
+                    WallOfForce))
             .SetSpellcastingClass(null)
             .SetAutoTag(FAMILY)
             .AddToDB();
