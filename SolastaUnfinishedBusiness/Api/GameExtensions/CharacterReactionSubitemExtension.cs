@@ -116,6 +116,40 @@ internal static class CharacterReactionSubitemExtension
         }
     }
 
+    internal static void BindSelectOption(
+        [NotNull] this CharacterReactionSubitem instance,
+        [NotNull] ReactionRequestSelectOption reactionRequest,
+        int slotLevel,
+        bool interactable,
+        CharacterReactionSubitem.SubitemSelectedHandler subitemSelected)
+    {
+        var label = instance.label;
+        var toggle = instance.toggle;
+        var tooltip = GetOrMakeBackgroundTooltip(toggle.transform);
+
+        if (tooltip)
+        {
+            tooltip.Disabled = true;
+        }
+
+        label.Text = reactionRequest.Labels[slotLevel];
+        toggle.interactable = interactable;
+        instance.canvasGroup.interactable = interactable;
+        instance.SubitemSelected = subitemSelected;
+
+        var rectTransform = toggle.GetComponent<RectTransform>();
+
+        rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 250);
+
+        // Hide all slots
+        var slotStatusTable = instance.slotStatusTable;
+
+        for (var index = 0; index < slotStatusTable.childCount; ++index)
+        {
+            slotStatusTable.GetChild(index).gameObject.SetActive(false);
+        }
+    }
+
     internal static void BindPowerBundle(
         [NotNull] this CharacterReactionSubitem instance,
         [NotNull] ReactionRequestSpendBundlePower reactionRequest,
