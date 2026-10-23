@@ -327,6 +327,7 @@ internal static class SpellsContext
         ConjureGoblinoids.contentPack = CeContentPackContext.CeContentPack;
         RegisterSpell(ConjureGoblinoids, 0, SpellListDruid, SpellListRanger);
         RegisterSpell(BuildElminstersElusion(), 0, SpellListWizard);
+        RegisterSpell(BuildGentleRepose(), 0, SpellListCleric, SpellListPaladin, SpellListWizard);
         RegisterSpell(BuildKineticJaunt(), 0, SpellListBard, SpellListSorcerer, SpellListWizard,
             spellListInventorClass);
         RegisterSpell(BuildDragonsBreath(), 0, SpellListSorcerer, SpellListWizard);

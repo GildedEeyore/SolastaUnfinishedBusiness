@@ -51,6 +51,20 @@ public static class RulesetImplementationManagerPatcher
         }
     }
 
+    [HarmonyPatch(typeof(RulesetImplementationManager),
+        nameof(RulesetImplementationManager.CanReviveFormBeAppliedToCharacter))]
+    [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
+    [UsedImplicitly]
+    public static class CanReviveFormBeAppliedToCharacter_Patch
+    {
+        [UsedImplicitly]
+        public static void Prefix(RulesetCharacter character)
+        {
+            //PATCH: supports Gentle Repose, whose days don't count against the time limit of revive spells
+            SpellBuilders.PauseDeathClockUnderGentleRepose(character);
+        }
+    }
+
     //PATCH: allow different algorithms to calculate critical damage
     [HarmonyPatch(typeof(RulesetImplementationManager), nameof(RulesetImplementationManager.ApplyDamageForm))]
     [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
