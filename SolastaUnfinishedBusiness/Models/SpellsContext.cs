@@ -73,10 +73,12 @@ internal static class SpellsContext
     internal static readonly SpellDefinition PsychicLance = BuildPsychicLance();
     internal static readonly SpellDefinition PsychicWhip = BuildPsychicWhip();
     internal static readonly SpellDefinition PulseWave = BuildPulseWave();
+    internal static readonly SpellDefinition RayOfSickness = BuildRayOfSickness();
     internal static readonly SpellDefinition Sanctuary = BuildSanctuary();
     internal static readonly SpellDefinition SearingSmite = BuildSearingSmite();
     internal static readonly SpellDefinition SkinOfRetribution = BuildSkinOfRetribution();
     internal static readonly SpellDefinition SonicBoom = BuildSonicBoom();
+    internal static readonly SpellDefinition SpiritShroud = BuildSpiritShroud();
     internal static readonly SpellDefinition StaggeringSmite = BuildStaggeringSmite();
     internal static readonly SpellDefinition SteelWhirlwind = BuildSteelWhirlwind();
     internal static readonly SpellDefinition SunlightBlade = BuildSunlightBlade();
@@ -306,7 +308,7 @@ internal static class SpellsContext
         RegisterSpell(BuildMagnifyGravity(), 0, SpellListWizard);
         RegisterSpell(BuildMule(), 0, SpellListBard, SpellListSorcerer, SpellListWarlock, SpellListWizard);
         RegisterSpell(BuildRadiantMotes(), 0, SpellListWizard, spellListInventorClass);
-        RegisterSpell(BuildRayOfSickness(), 0, SpellListSorcerer, SpellListWizard);
+        RegisterSpell(RayOfSickness, 0, SpellListSorcerer, SpellListWizard);
         RegisterSpell(Sanctuary, 0, SpellListCleric, spellListInventorClass);
         RegisterSpell(SearingSmite, 0, SpellListPaladin, SpellListRanger);
         RegisterSpell(SkinOfRetribution, 0, SpellListWarlock);
@@ -359,7 +361,7 @@ internal static class SpellsContext
         RegisterSpell(BuildLightningArrow(), 0, SpellListRanger);
         RegisterSpell(BuildIntellectFortress(), 0, SpellListBard, SpellListSorcerer, SpellListWarlock, SpellListWizard,
             spellListInventorClass);
-        RegisterSpell(BuildSpiritShroud(), 0, SpellListCleric, SpellListPaladin, SpellListWarlock, SpellListWizard);
+        RegisterSpell(SpiritShroud, 0, SpellListCleric, SpellListPaladin, SpellListWarlock, SpellListWizard);
         RegisterSpell(BuildVitalityTransfer(), 0, SpellListCleric, SpellListWizard);
         RegisterSpell(BuildWinterBreath(), 0, SpellListDruid, SpellListSorcerer, SpellListWizard);
 

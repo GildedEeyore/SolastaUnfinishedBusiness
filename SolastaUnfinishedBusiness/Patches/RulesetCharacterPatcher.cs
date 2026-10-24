@@ -713,6 +713,20 @@ public static class RulesetCharacterPatcher
         }
     }
 
+    [HarmonyPatch(typeof(RulesetCharacter), nameof(RulesetCharacter.IsComponentVerbalValid))]
+    [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
+    [UsedImplicitly]
+    public static class IsComponentVerbalValid_Patch
+    {
+        [UsedImplicitly]
+        public static void Postfix(
+            RulesetCharacter __instance, ref bool __result, SpellDefinition spellDefinition, ref string failure)
+        {
+            //PATCH: Undead Warlock Profane Casting skips verbal components of conjuration and necromancy spells
+            PatronUndead.ValidateProfaneCasting(__instance, spellDefinition, false, ref __result, ref failure);
+        }
+    }
+
     [HarmonyPatch(typeof(RulesetCharacter), nameof(RulesetCharacter.IsComponentSomaticValid))]
     [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
     [UsedImplicitly]
@@ -735,6 +749,9 @@ public static class RulesetCharacterPatcher
             //PATCH: Allows valid Somatic component if Inventor has infused item in main hand or off-hand slots
             // allows casting somatic spells with full hands if one of the hands holds item infused by the caster
             ValidateIfInfusedInHand(__instance, ref __result, ref failure);
+
+            //PATCH: Undead Warlock Profane Casting skips somatic components of conjuration and necromancy spells
+            PatronUndead.ValidateProfaneCasting(__instance, spellDefinition, false, ref __result, ref failure);
         }
 
 #if false
@@ -813,6 +830,9 @@ public static class RulesetCharacterPatcher
             //PATCH: Allows spells to satisfy mundane material components if Inventor has infused item equipped
             //Used mostly for melee cantrips requiring melee weapon to cast
             ValidateInfusedFocus(__instance, spellDefinition, ref __result, ref failure);
+
+            //PATCH: Undead Warlock Profane Casting skips material components that aren't costly or consumed
+            PatronUndead.ValidateProfaneCasting(__instance, spellDefinition, true, ref __result, ref failure);
         }
 
         //TODO: move to separate file
