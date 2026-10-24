@@ -259,6 +259,8 @@
   <Target Name="ZipTranslations" BeforeTargets="PreBuildEvent" Condition="('$(Configuration)' == 'Release' Or '$(Configuration)' == 'Release Install' Or '$(Configuration)' == 'Release Workflow')">
 <!--    <Exec Command="call ApplyTranslations.bat" />-->
     <ZipDirectory Overwrite="true" SourceDirectory="$(ProjectDir)/Translations/" DestinationFile="$(ProjectDir)/Resources/Translations.zip" />
+    <!-- an incremental build won't notice the new zip, so force the resources to be embedded again -->
+    <Delete Files="$(IntermediateOutputPath)$(RootNamespace).Properties.Resources.resources" />
   </Target>
 
   <ItemGroup Condition="('$(Configuration)' == 'Release' Or '$(Configuration)' == 'Release Install' Or '$(Configuration)' == 'Release Workflow')">
