@@ -145,7 +145,6 @@ public static partial class Tabletop2024Context
         SwitchOneDndSpellMagicWeapon();
         SwitchOneDndSpellPowerWordStun();
         SwitchOneDndSpellRitualOnAllCasters();
-        SwitchOneDndSpellSpareTheDying();
         SwitchOneDndSpellSpiderClimb();
         SwitchOneDndSpellStoneSkin();
         SwitchOneDndSpellWitchBolt();

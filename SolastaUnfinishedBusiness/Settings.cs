@@ -528,7 +528,6 @@ public class Settings : UnityModManager.ModSettings
     [Tag(Type = TagType.T2024)] public bool EnableOneDndLesserRestorationSpell { get; set; }
     [Tag(Type = TagType.T2024)] public bool EnableOneDndMagicWeaponSpell { get; set; }
     [Tag(Type = TagType.T2024)] public bool EnableOneDndPowerWordStunSpell { get; set; }
-    [Tag(Type = TagType.T2024)] public bool EnableOneDndSpareTheDyingSpell { get; set; }
     [Tag(Type = TagType.T2024)] public bool EnableOneDndSpiderClimbSpell { get; set; }
     [Tag(Type = TagType.T2024)] public bool EnableOneDndStoneSkinSpell { get; set; }
     [Tag(Type = TagType.T2024)] public bool EnableOneDndTrueStrikeCantrip { get; set; }

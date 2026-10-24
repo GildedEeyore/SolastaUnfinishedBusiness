@@ -250,15 +250,18 @@ public static partial class Tabletop2024Context
 
     private static void LoadOneDndSpellSpareTheDying()
     {
+        // 2024 rules: V, S components, 15 feet range on any creature at 0 HP, also on the druid list
+        // use a copy so Healer feat and Grave Domain powers that share the vanilla effect keep touch range
+        SpareTheDying.verboseComponent = true;
+        SpareTheDying.effectDescription = EffectDescriptionBuilder
+            .Create(SpareTheDying.EffectDescription)
+            .Build();
+        SpareTheDying.EffectDescription.targetSide = Side.All;
+        SpareTheDying.EffectDescription.rangeType = RangeType.Distance;
+        SpareTheDying.EffectDescription.rangeParameter = 3;
+        SpareTheDying.GuiPresentation.description = "Spell/&SpareTheDyingExtendedDescription";
         SpareTheDying.AddCustomSubFeatures(new ModifyEffectDescriptionSpareTheDying());
-    }
-
-    internal static void SwitchOneDndSpellSpareTheDying()
-    {
-        SpareTheDying.GuiPresentation.description =
-            Main.Settings.EnableOneDndSpareTheDyingSpell
-                ? "Spell/&SpareTheDyingDescription"
-                : "Spell/&SpareTheDyingExtendedDescription";
+        SpellListDefinitions.SpellListDruid.AddSpell(SpareTheDying);
     }
 
     internal static void SwitchOneDndSpellSpiderClimb()
@@ -531,20 +534,16 @@ public static partial class Tabletop2024Context
     {
         public bool IsValid(BaseDefinition definition, RulesetCharacter character, EffectDescription effectDescription)
         {
-            return Main.Settings.EnableOneDndSpareTheDyingSpell && definition == SpareTheDying;
+            return definition == SpareTheDying;
         }
 
+        // cantrip upgrade: range doubles at levels 5 (30 feet), 11 (60 feet) and 17 (120 feet)
         public EffectDescription GetEffectDescription(
             BaseDefinition definition,
             EffectDescription effectDescription,
             RulesetCharacter character,
             RulesetEffect rulesetEffect)
         {
-            if (!Main.Settings.EnableOneDndSpareTheDyingSpell)
-            {
-                return effectDescription;
-            }
-
             effectDescription.RangeType = RangeType.Distance;
 
             var level = character.TryGetAttributeValue(AttributeDefinitions.CharacterLevel);

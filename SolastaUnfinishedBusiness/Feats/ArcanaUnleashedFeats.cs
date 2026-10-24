@@ -754,7 +754,8 @@ internal static class ArcanaUnleashedFeats
             .SetGuiPresentationNoContent(true)
             .AddCustomSubFeatures(
                 ValidateRepertoireForAutoprepared.AnyClassOrSubclass,
-                AutoPreparedSpellsUpToMaxSpellSlotLevel.Marker)
+                AutoPreparedSpellsUpToMaxSpellSlotLevel.Marker,
+                AutoPreparedSpellsScribedInSpellbook.Marker)
             .SetPreparedSpellGroups(
                 BuildSpellGroup(0,
                     Shield,
@@ -903,7 +904,8 @@ internal static class ArcanaUnleashedFeats
             .SetGuiPresentationNoContent(true)
             .AddCustomSubFeatures(
                 ValidateRepertoireForAutoprepared.AnyClassOrSubclass,
-                AutoPreparedSpellsUpToMaxSpellSlotLevel.Marker)
+                AutoPreparedSpellsUpToMaxSpellSlotLevel.Marker,
+                AutoPreparedSpellsScribedInSpellbook.Marker)
             .SetPreparedSpellGroups(
                 BuildSpellGroup(0,
                     Entangle,
@@ -1006,7 +1008,8 @@ internal static class ArcanaUnleashedFeats
             .SetGuiPresentationNoContent(true)
             .AddCustomSubFeatures(
                 ValidateRepertoireForAutoprepared.AnyClassOrSubclass,
-                AutoPreparedSpellsUpToMaxSpellSlotLevel.Marker)
+                AutoPreparedSpellsUpToMaxSpellSlotLevel.Marker,
+                AutoPreparedSpellsScribedInSpellbook.Marker)
             .SetPreparedSpellGroups(
                 BuildSpellGroup(0,
                     SpellsContext.ChromaticOrb,
@@ -1211,7 +1214,8 @@ internal static class ArcanaUnleashedFeats
             .SetGuiPresentationNoContent(true)
             .AddCustomSubFeatures(
                 ValidateRepertoireForAutoprepared.AnyClassOrSubclass,
-                AutoPreparedSpellsUpToMaxSpellSlotLevel.Marker)
+                AutoPreparedSpellsUpToMaxSpellSlotLevel.Marker,
+                AutoPreparedSpellsScribedInSpellbook.Marker)
             .SetPreparedSpellGroups(
                 BuildSpellGroup(0,
                     InflictWounds,

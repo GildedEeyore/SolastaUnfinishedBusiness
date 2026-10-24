@@ -2043,9 +2043,18 @@ public static class RulesetCharacterPatcher
                 foreach (var preparedSpellsGroup in autoPreparedSpells.AutoPreparedSpellsGroups
                              .Where(preparedSpellsGroup => preparedSpellsGroup.ClassLevel <= classLevel))
                 {
-                    spellRepertoire.AutoPreparedSpells.AddRange(preparedSpellsGroup.SpellsList
-                        .Where(spell => spell.SpellLevel <= maxSpellLevel));
+                    var spells = preparedSpellsGroup.SpellsList
+                        .Where(spell => spell.SpellLevel <= maxSpellLevel)
+                        .ToArray();
+
+                    spellRepertoire.AutoPreparedSpells.AddRange(spells);
                     spellRepertoire.AutoPreparedTag = autoPreparedSpells.AutoPreparedTag;
+
+                    //PATCH: supports `AutoPreparedSpellsScribedInSpellbook`
+                    if (autoPreparedSpells.HasSubFeatureOfType<AutoPreparedSpellsScribedInSpellbook>())
+                    {
+                        ScribeInSpellbook(__instance, spellRepertoire, spells);
+                    }
                 }
 
                 //PATCH: supports `AutoPreparedSpellsFromFeatRepertoire`
@@ -2083,6 +2092,25 @@ public static class RulesetCharacterPatcher
             }
 
             return false;
+        }
+
+        // scribing follows vanilla GrantSpell so it uses spellbook pages when that setting is on
+        private static void ScribeInSpellbook(
+            RulesetCharacter character, RulesetSpellRepertoire spellRepertoire, SpellDefinition[] spells)
+        {
+            if (character is not RulesetCharacterHero ||
+                spellRepertoire.SpellCastingFeature?.SpellKnowledge != SpellKnowledge.Spellbook ||
+                spellRepertoire.CharacterInventory == null)
+            {
+                return;
+            }
+
+            var scribedSpells = spellRepertoire.EnumerateAvailableScribedSpells();
+
+            foreach (var spell in spells.Where(spell => !scribedSpells.Contains(spell)))
+            {
+                spellRepertoire.GrantSpell(spell);
+            }
         }
 
         // computed from class levels instead of repertoire spell casting level as that one might not be refreshed yet

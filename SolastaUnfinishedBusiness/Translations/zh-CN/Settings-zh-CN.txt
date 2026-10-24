@@ -198,7 +198,6 @@ ModUi/&EnableOneDndHuntersMarkSpell=启用 5e 2024 版本<color=#D89555>猎人�
 ModUi/&EnableOneDndLesserRestorationSpell=启用 5e 2024 版本<color=#D89555>次级修复术</color>法术<i><color=#F0DAA0>[附赠动作]</color></i>
 ModUi/&EnableOneDndMagicWeaponSpell=启用 5e 2024 版本<color=#D89555>魔法武器</color>法术<i><color=#F0DAA0>[附赠行动，无需专注，在 3 环和 6 环施展时增强]</color></i>
 ModUi/&EnableOneDndPowerWordStunSpell=启用 5e 2024 版本<color=#D89555>律令震慑</color>法术<i><color=#F0DAA0>[如果目标的生命值不超过 150，则震慑一回合]</color></i>
-ModUi/&EnableOneDndSpareTheDyingSpell=启用 5e 2024 版本<color=#D89555>维生术</color>法术<i><color=#F0DAA0>[范围在 5、11 和 17 级加倍]</color></i>
 ModUi/&EnableOneDndSpiderClimbSpell=启用 5e 2024 版本<color=#D89555>蛛行术</color>法术<i><color=#F0DAA0>[升环施法 +1 目标]</color></i>
 ModUi/&EnableOneDndStoneSkinSpell=启用 5e 2024 版本<color=#D89555>石肤术</color> 5e 2024 法术版本<i><color=#F0DAA0>[同时提供对魔法钝击、穿刺、挥砍的抗性]</color></i>
 ModUi/&EnableOneDndTrueStrikeCantrip=启用 5e 2024 版本<color=#D89555>克敌先击</color>法术<b><i><color=#C04040E0>[需要重启]</color></i></b><i><color=#F0DAA0>[攻击时使用你的施法属性调整值进行攻击掷骰和伤害加值，并从 5 级开始造成额外的光耀伤害]</color></i>
