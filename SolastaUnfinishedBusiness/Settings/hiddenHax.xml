@@ -988,7 +988,6 @@
     <EnableOneDndLesserRestorationSpell>true</EnableOneDndLesserRestorationSpell>
     <EnableOneDndMagicWeaponSpell>true</EnableOneDndMagicWeaponSpell>
     <EnableOneDndPowerWordStunSpell>true</EnableOneDndPowerWordStunSpell>
-    <EnableOneDndSpareTheDyingSpell>true</EnableOneDndSpareTheDyingSpell>
     <EnableOneDndSpiderClimbSpell>true</EnableOneDndSpiderClimbSpell>
     <EnableOneDndStoneSkinSpell>true</EnableOneDndStoneSkinSpell>
     <EnableOneDndTrueStrikeCantrip>true</EnableOneDndTrueStrikeCantrip>
