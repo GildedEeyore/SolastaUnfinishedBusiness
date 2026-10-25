@@ -1565,4 +1565,148 @@ internal static partial class SpellBuilders
     }
 
     #endregion
+
+    #region Negative Energy Flood
+
+    internal static SpellDefinition BuildNegativeEnergyFlood()
+    {
+        const string NAME = "NegativeEnergyFlood";
+
+        var baseZombie = TryGetDefinition<MonsterDefinition>("Zombie", out var zombie)
+            ? zombie
+            : MonsterDefinitions.Ghoul;
+
+        var monsterZombie = MonsterDefinitionBuilder
+            .Create(baseZombie, $"{NAME}Zombie")
+            .SetOrUpdateGuiPresentation($"{NAME}Zombie", Category.Monster)
+            .NoExperienceGain()
+            .SetDroppedLootDefinition(null)
+            .SetFullyControlledWhenAllied(true)
+            .SetDefaultFaction(FactionDefinitions.Party)
+            .SetBestiaryEntry(BestiaryDefinitions.BestiaryEntry.None)
+            .SetDungeonMakerPresence(MonsterDefinition.DungeonMaker.None)
+            .AddToDB();
+
+        var powerZombie = FeatureDefinitionPowerBuilder
+            .Create($"Power{NAME}Zombie")
+            .SetGuiPresentation(NAME, Category.Spell, hidden: true)
+            .SetUsesFixed(ActivationTime.NoCost)
+            .SetShowCasting(false)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetDurationData(DurationType.Hour, 24)
+                    .SetTargetingData(Side.Ally, RangeType.Distance, 24, TargetType.Position)
+                    .SetEffectForms(
+                        EffectFormBuilder
+                            .Create()
+                            .SetSummonCreatureForm(1, monsterZombie.Name)
+                            .Build())
+                    .SetParticleEffectParameters(VampiricTouch)
+                    .Build())
+            .AddToDB();
+
+        var spell = SpellDefinitionBuilder
+            .Create(NAME)
+            .SetGuiPresentation(Category.Spell, CircleOfDeath)
+            .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolNecromancy)
+            .SetSpellLevel(5)
+            .SetCastingTime(ActivationTime.Action)
+            // RAW a broken bone and a square of black silk, covered by a pouch or focus
+            .SetMaterialComponent(MaterialComponentType.Mundane)
+            .SetSomaticComponent(false)
+            .SetVerboseComponent(true)
+            .SetVocalSpellSameType(VocalSpellSemeType.Attack)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetTargetingData(Side.All, RangeType.Distance, 12, TargetType.IndividualsUnique)
+                    .SetEffectAdvancement(EffectIncrementMethod.PerAdditionalSlotLevel, additionalDicePerIncrement: 1)
+                    .SetSavingThrowData(false, AttributeDefinitions.Constitution, false,
+                        EffectDifficultyClassComputation.SpellCastingFeature)
+                    .SetEffectForms(
+                        EffectFormBuilder
+                            .Create()
+                            .HasSavingThrow(EffectSavingThrowType.HalfDamage)
+                            .SetDamageForm(DamageTypeNecrotic, 3, DieType.D10, 25)
+                            .Build())
+                    .SetParticleEffectParameters(Blight)
+                    .Build())
+            .AddToDB();
+
+        spell.AddCustomSubFeatures(new CustomBehaviorNegativeEnergyFlood(spell, powerZombie));
+
+        return spell;
+    }
+
+    private sealed class CustomBehaviorNegativeEnergyFlood(
+        SpellDefinition spellNegativeEnergyFlood,
+        FeatureDefinitionPower powerZombie) : IMagicEffectBeforeHitConfirmedOnEnemy, IPowerOrSpellFinishedByMe
+    {
+        public IEnumerator OnMagicEffectBeforeHitConfirmedOnEnemy(
+            GameLocationBattleManager battleManager,
+            GameLocationCharacter attacker,
+            GameLocationCharacter defender,
+            ActionModifier actionModifier,
+            RulesetEffect rulesetEffect,
+            List<EffectForm> actualEffectForms,
+            bool firstTarget,
+            bool criticalHit)
+        {
+            var rulesetDefender = defender.RulesetCharacter;
+
+            if (rulesetEffect.SourceDefinition != spellNegativeEnergyFlood ||
+                rulesetDefender == null ||
+                rulesetDefender.CharacterFamily != CharacterFamilyDefinitions.Undead.Name)
+            {
+                yield break;
+            }
+
+            // an Undead target takes no damage and gains 3d10 temporary hit points instead, which don't upcast
+            actualEffectForms.Clear();
+
+            var tempHitPoints = 0;
+
+            for (var i = 0; i < 3; i++)
+            {
+                tempHitPoints += RollDie(DieType.D10, AdvantageType.None, out _, out _);
+            }
+
+            rulesetDefender.ReceiveTemporaryHitPoints(
+                tempHitPoints, DurationType.UntilLongRest, 0, TurnOccurenceType.StartOfTurn,
+                attacker.RulesetCharacter.Guid);
+        }
+
+        public IEnumerator OnPowerOrSpellFinishedByMe(CharacterActionMagicEffect action, BaseDefinition baseDefinition)
+        {
+            var caster = action.ActingCharacter;
+            var rulesetCaster = caster.RulesetCharacter;
+
+            foreach (var target in action.ActionParams.TargetCharacters)
+            {
+                // RAW a Humanoid killed by this spell rises at the start of the caster's next turn; here it rises
+                // as soon as the spell finishes
+                if (target.RulesetCharacter is not RulesetCharacterMonster { IsDeadOrDying: true } rulesetTarget ||
+                    rulesetTarget.CharacterFamily != CharacterFamilyDefinitions.Humanoid.Name)
+                {
+                    continue;
+                }
+
+                var implementationService = ServiceRepository.GetService<IRulesetImplementationService>();
+                var usablePower = PowerProvider.Get(powerZombie, rulesetCaster);
+                var actionParams = new CharacterActionParams(caster, ActionDefinitions.Id.PowerNoCost)
+                {
+                    RulesetEffect = implementationService.InstantiateEffectPower(rulesetCaster, usablePower, false),
+                    UsablePower = usablePower,
+                    Positions = { target.LocationPosition }
+                };
+
+                ServiceRepository.GetService<IGameLocationActionService>().ExecuteAction(actionParams, null, true);
+            }
+
+            yield break;
+        }
+    }
+
+    #endregion
 }

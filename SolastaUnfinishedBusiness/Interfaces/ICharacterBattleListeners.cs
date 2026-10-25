@@ -2,6 +2,7 @@
 using JetBrains.Annotations;
 using SolastaUnfinishedBusiness.Api;
 using SolastaUnfinishedBusiness.Api.GameExtensions;
+using SolastaUnfinishedBusiness.Spells;
 
 namespace SolastaUnfinishedBusiness.Interfaces;
 
@@ -96,6 +97,9 @@ public static class CharacterBattleListenersPatch
                 0,
                 0);
         }
+
+        //PATCH: supports Summon Undead Putrid spirit's Festering Aura
+        SpellBuilders.HandleSummonUndeadFesteringAura(locationCharacter);
 
         foreach (var listener in rulesetCharacter.GetSubFeaturesByType<ICharacterTurnStartListener>())
         {
