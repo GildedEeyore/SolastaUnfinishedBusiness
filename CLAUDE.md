@@ -17,3 +17,12 @@ Subclass names have come out wrong in game more than once: the Arcana Domain and
 
    Don't package the build unless it prints `OK`.
 4. When you report the build, tell the user the exact in-game title. It is shown on both the subclass selection screen and the mod's settings toggle.
+
+## New items: show the copyright marker in the mod manager
+
+Every new feat, subclass, spell, invocation, race, subrace or similar item added in this fork must show the © symbol after its name in the mod manager, unless the user says otherwise for that item. The mod manager adds the symbol to every definition whose name is in `ModUi.TabletopDefinitionNames` (`SolastaUnfinishedBusiness/Displays/_ModUi.cs`), so add the item's definition name there, in alphabetical order. Never put © in the translation title or description, because those show in game.
+
+Use the name of the definition the mod manager lists, which is not always the item itself:
+- Feats with ability or damage choices are listed by their group: `FeatGroup<Name>`, not `Feat<Name>Int`.
+- Subclasses use the name passed to `CharacterSubclassDefinitionBuilder.Create(...)`. For Theurgy that is the settings toggle `WizardTheurgy`.
+- Changes to vanilla races or spells (Dragonborn, High Elf, Spare the Dying) have no mod manager entry, so they need nothing.
