@@ -151,6 +151,7 @@ internal static class FlexibleRacesContext
         { "RaceTiefling", ["AttributeModifierTieflingAbilityScoreIncreaseCha"] },
         { "RaceTieflingDevilTongue", ["AttributeModifierTieflingIntelligenceAbilityScoreIncrease"] },
         { "RaceTieflingFeral", ["AttributeModifierTieflingDexterityAbilityScoreIncrease"] },
+        { "RaceTieflingLevistus", ["AttributeModifierTieflingConstitutionAbilityScoreIncrease"] },
         { "RaceTieflingMephistopheles", ["AttributeModifierTieflingDexterityAbilityScoreIncrease"] },
         { "RaceTieflingZariel", ["AttributeModifierTieflingStrengthAbilityScoreIncrease"] }
     };

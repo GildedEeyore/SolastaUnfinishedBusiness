@@ -246,6 +246,7 @@ internal static class ModUi
         "RaceShadarKai",
         "RaceTieflingDevilTongue",
         "RaceTieflingFeral",
+        "RaceTieflingLevistus",
         "RaceTieflingMephistopheles",
         "RaceTieflingZariel",
         "RangerFeyWanderer",

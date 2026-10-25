@@ -7,6 +7,7 @@ using SolastaUnfinishedBusiness.CustomUI;
 using SolastaUnfinishedBusiness.Interfaces;
 using SolastaUnfinishedBusiness.Models;
 using SolastaUnfinishedBusiness.Properties;
+using SolastaUnfinishedBusiness.Spells;
 using SolastaUnfinishedBusiness.Validators;
 using static RuleDefinitions;
 using static FeatureDefinitionAttributeModifier;
@@ -25,6 +26,7 @@ internal static class RaceTieflingBuilder
     internal static CharacterRaceDefinition RaceTiefling { get; } = BuildTiefling();
     internal static CharacterRaceDefinition RaceTieflingDevilTongue { get; private set; }
     internal static CharacterRaceDefinition RaceTieflingFeral { get; private set; }
+    internal static CharacterRaceDefinition RaceTieflingLevistus { get; private set; }
     internal static CharacterRaceDefinition RaceTieflingMephistopheles { get; private set; }
     internal static CharacterRaceDefinition RaceTieflingZariel { get; private set; }
 
@@ -166,6 +168,46 @@ internal static class RaceTieflingBuilder
         RaceTieflingFeral.contentPack = contentPack;
 
         //
+        // Levistus
+        //
+
+        var attributeModifierTieflingConstitutionAbilityScoreIncrease = FeatureDefinitionAttributeModifierBuilder
+            .Create("AttributeModifierTieflingConstitutionAbilityScoreIncrease")
+            .SetGuiPresentation(Category.Feature)
+            .SetModifier(AttributeModifierOperation.Additive, AttributeDefinitions.Constitution, 1)
+            .AddToDB();
+
+        // Legacy of Stygia
+
+        _ = SpellsContext.SkinOfRetribution;
+
+        var castSpellTieflingLevistus = FeatureDefinitionCastSpellBuilder
+            .Create(FeatureDefinitionCastSpells.CastSpellTiefling, "CastSpellTieflingLevistus")
+            .SetGuiPresentation(Category.Feature)
+            .SetKnownCantrips(1, 1, FeatureDefinitionCastSpellBuilder.CasterProgression.Flat)
+            .SetSpellList(
+                SpellListDefinitionBuilder
+                    .Create("SpellListTieflingLevistus")
+                    .SetGuiPresentationNoContent(true)
+                    .ClearSpells()
+                    .SetSpellsAtLevel(0, SpellDefinitions.RayOfFrost)
+                    .SetSpellsAtLevel(1, SpellBuilders.BuildSkinOfRetributionTiefling())
+                    .SetSpellsAtLevel(2, SpellDefinitions.Darkness)
+                    .FinalizeSpells(true, 2)
+                    .AddToDB())
+            .AddToDB();
+
+        RaceTieflingLevistus = CharacterRaceDefinitionBuilder
+            .Create(Tiefling, "RaceTieflingLevistus")
+            .SetOrUpdateGuiPresentation(Category.Race)
+            .SetFeaturesAtLevel(1,
+                attributeModifierTieflingConstitutionAbilityScoreIncrease,
+                castSpellTieflingLevistus)
+            .AddToDB();
+
+        RaceTieflingLevistus.contentPack = contentPack;
+
+        //
         // Mephistopheles
         //
 
@@ -259,6 +301,7 @@ internal static class RaceTieflingBuilder
         raceTiefling.subRaces.SetRange(
             RaceTieflingDevilTongue,
             RaceTieflingFeral,
+            RaceTieflingLevistus,
             RaceTieflingMephistopheles,
             RaceTieflingZariel);
 
