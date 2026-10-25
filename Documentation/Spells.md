@@ -942,7 +942,7 @@ Touch an ally to allow them to climb walls like a spider for a limited time.
 
 Grows spikes and thorns in the area, making the terrain difficult and causing damage for every cell of movement.
 
-# 157. - Spiritual Weapon (V,S) level 2 Evocation [SOL]
+# 157. - Spiritual Weapon (V,S) level 2 Evocation [Concentration] [SOL]
 
 **[Cleric]**
 
