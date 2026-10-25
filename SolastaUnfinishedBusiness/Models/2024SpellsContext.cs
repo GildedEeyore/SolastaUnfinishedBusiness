@@ -29,8 +29,11 @@ public static partial class Tabletop2024Context
         //    .SetSavingThrowData(true, AttributeDefinitions.Wisdom, true,
         //EffectDifficultyClassComputation.SpellCastingFeature, "Wisdom", 15)
         Shine.EffectDescription.DifficultyClassComputation = EffectDifficultyClassComputation.FixedValue;
-        Shine.EffectDescription.FixedSavingThrowDifficultyClass = 15;        
-        
+        Shine.EffectDescription.FixedSavingThrowDifficultyClass = 15;
+
+        // 2024 rules: Spiritual Weapon requires concentration, up to 1 minute
+        SpiritualWeapon.requiresConcentration = true;
+
 
         //not to brew
             //Barkskin.requiresConcentration = true;
