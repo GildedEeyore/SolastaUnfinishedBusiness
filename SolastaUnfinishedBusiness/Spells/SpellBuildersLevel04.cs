@@ -5,6 +5,7 @@ using System.Linq;
 using SolastaUnfinishedBusiness.Api.GameExtensions;
 using SolastaUnfinishedBusiness.Api.Helpers;
 using SolastaUnfinishedBusiness.Behaviors;
+using SolastaUnfinishedBusiness.Behaviors.Specific;
 using SolastaUnfinishedBusiness.Builders;
 using SolastaUnfinishedBusiness.Builders.Features;
 using SolastaUnfinishedBusiness.CustomUI;
@@ -1875,6 +1876,214 @@ internal static partial class SpellBuilders
             usablePower.saveDC = saveDC;
             defender.MyExecuteActionSpendPower(usablePower, attacker);
         }
+    }
+
+    #endregion
+
+    #region Summon Elemental
+
+    private const string SummonElementalName = "SummonElemental";
+
+    internal static SpellDefinition BuildSummonElemental()
+    {
+        const string NAME = SummonElementalName;
+
+        var conditionAttackRoll = BuildSummonSpiritConditionAttackRoll(NAME);
+
+        var commonFeatures = new[]
+        {
+            BuildSummonSpiritInitiative(NAME), FeatureDefinitionMoveModes.MoveModeMove8,
+            FeatureDefinitionSenses.SenseNormalVision, FeatureDefinitionSenses.SenseDarkvision12,
+            DamageAffinityPoisonImmunity, ConditionAffinityExhaustionImmunity,
+            GetSummonSpiritConditionImmunity(ConditionDefinitions.ConditionParalyzed),
+            GetSummonSpiritConditionImmunity(ConditionDefinitions.ConditionPetrified), ConditionAffinityPoisonImmunity
+        };
+
+        var damageAffinityPiercingResistance = FeatureDefinitionDamageAffinityBuilder
+            .Create($"DamageAffinity{NAME}PiercingResistance")
+            .SetGuiPresentation(Category.Feature)
+            .SetDamageAffinityType(DamageAffinityType.Resistance)
+            .SetDamageType(DamageTypePiercing)
+            .AddToDB();
+
+        var damageAffinitySlashingResistance = FeatureDefinitionDamageAffinityBuilder
+            .Create($"DamageAffinity{NAME}SlashingResistance")
+            .SetGuiPresentation(Category.Feature)
+            .SetDamageAffinityType(DamageAffinityType.Resistance)
+            .SetDamageType(DamageTypeSlashing)
+            .AddToDB();
+
+        // Solasta has no burrow or swim speeds and no water elemental, so the Water spirit uses the Ice Elemental
+        var elements = new (string Form, MonsterDefinition Monster, string AttackName, string DamageType,
+            FeatureDefinition[] Features, BaseDefinition Sprite)[]
+            {
+                ("Air", MonsterDefinitions.Air_Elemental, "Attack_Air_Elemental_Slam", DamageTypeLightning,
+                    [
+                        FeatureDefinitionMoveModes.MoveModeFly8, DamageAffinityLightningResistance,
+                        DamageAffinityThunderResistance
+                    ], ConjureElementalAir),
+                ("Earth", MonsterDefinitions.Earth_Elemental, "Attack_Earth_Elemental_Slam", DamageTypeBludgeoning,
+                    [damageAffinityPiercingResistance, damageAffinitySlashingResistance], ConjureElemental),
+                ("Fire", MonsterDefinitions.Fire_Elemental, "Attack_Fire_Elemental_Touch", DamageTypeFire,
+                    [DamageAffinityFireImmunity], ConjureElementalFire),
+                ("Water", MonsterDefinitions.Ice_Elemental, "Attack_Ice_Elemental_Slam", DamageTypeCold,
+                    [DamageAffinityAcidResistance], ConjureMinorElementals)
+            };
+
+        var subSpells = new List<SpellDefinition>();
+
+        // RAW the spell's level sets the spirit's stats, so build one spirit per element and slot level
+        for (var level = 4; level <= 9; level++)
+        {
+            foreach (var (form, monster, attackName, damageType, features, sprite) in elements)
+            {
+                var attack = BuildSummonSpiritAttack(
+                    GetSummonSpiritBaseAttack(monster, attackName), $"Attack{NAME}{form}{level}", $"Attack{NAME}Slam",
+                    EffectFormBuilder.DamageForm(damageType, 1, DieType.D10, 4 + level));
+
+                var spirit = MonsterDefinitionBuilder
+                    .Create(monster, $"{NAME}{form}Spirit{level}")
+                    .SetOrUpdateGuiPresentation($"{NAME}{form}Spirit", Category.Monster)
+                    .SetFeatures([.. commonFeatures, .. features])
+                    .SetAttackIterations(new MonsterAttackIteration(attack, level / 2))
+                    .SetArmorClass(11 + level)
+                    .SetAbilityScores(18, 15, 17, 4, 10, 16)
+                    .SetSavingThrowScores()
+                    .SetSkillScores()
+                    .SetStandardHitPoints(50 + (10 * (level - 4)))
+                    .SetSizeDefinition(CharacterSizeDefinitions.Medium)
+                    .SetAlignment(MonsterDefinitionBuilder.NeutralAlignment)
+                    .SetCharacterFamily(CharacterFamilyDefinitions.Elemental.Name)
+                    .SetCreatureTags(NAME)
+                    .SetChallengeRating(0)
+                    .NoExperienceGain()
+                    .SetDroppedLootDefinition(null)
+                    .SetFullyControlledWhenAllied(true)
+                    .SetDefaultFaction(FactionDefinitions.Party)
+                    .SetBestiaryEntry(BestiaryDefinitions.BestiaryEntry.None)
+                    .SetDungeonMakerPresence(MonsterDefinition.DungeonMaker.None)
+                    .AddToDB();
+
+                // the base elementals are Large and the spirit is Medium
+                spirit.MonsterPresentation.maleModelScale *= 0.7f;
+                spirit.MonsterPresentation.femaleModelScale *= 0.7f;
+
+                var subSpell = SpellDefinitionBuilder
+                    .Create($"{NAME}{form}{level}")
+                    .SetGuiPresentation($"{NAME}{form}", Category.Spell, sprite)
+                    .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolConjuration)
+                    .SetSpellLevel(4)
+                    .SetCastingTime(ActivationTime.Action)
+                    .SetMaterialComponent(MaterialComponentType.Mundane)
+                    .SetSomaticComponent(true)
+                    .SetVerboseComponent(true)
+                    .SetVocalSpellSameType(VocalSpellSemeType.Buff)
+                    .SetRequiresConcentration(true)
+                    .SetEffectDescription(
+                        EffectDescriptionBuilder
+                            .Create()
+                            .SetDurationData(DurationType.Hour, 1)
+                            .SetTargetingData(Side.Ally, RangeType.Distance, 18, TargetType.Position)
+                            .SetEffectForms(
+                                EffectFormBuilder
+                                    .Create()
+                                    .SetSummonCreatureForm(1, spirit.Name)
+                                    .Build())
+                            .SetParticleEffectParameters(ConjureElemental)
+                            .Build())
+                    .AddCustomSubFeatures(new PowerOrSpellFinishedByMeSummonSpirit(conditionAttackRoll))
+                    .AddToDB();
+
+                UpcastConjureElementalAndFey.RegisterSlotLevelSubspell(subSpell, level);
+
+                subSpells.Add(subSpell);
+            }
+        }
+
+        var spell = SpellDefinitionBuilder
+            .Create(NAME)
+            .SetGuiPresentation(Category.Spell, ConjureElemental)
+            .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolConjuration)
+            .SetSpellLevel(4)
+            .SetCastingTime(ActivationTime.Action)
+            // RAW requires a gold-inlaid vial worth 400+ GP; no buyable item matches, so a pouch or focus is enough
+            .SetMaterialComponent(MaterialComponentType.Mundane)
+            .SetSomaticComponent(true)
+            .SetVerboseComponent(true)
+            .SetVocalSpellSameType(VocalSpellSemeType.Buff)
+            .SetRequiresConcentration(true)
+            .SetEffectDescription(
+                // UI Only
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetDurationData(DurationType.Hour, 1)
+                    .SetTargetingData(Side.Ally, RangeType.Distance, 18, TargetType.Position)
+                    .Build())
+            .SetSubSpells([.. subSpells])
+            .AddToDB();
+
+        return spell;
+    }
+
+    #endregion
+
+    #region Festering Blast
+
+    internal static SpellDefinition BuildFesteringBlast()
+    {
+        const string NAME = "FesteringBlast";
+
+        var conditionFesteringBlast = ConditionDefinitionBuilder
+            .Create(ConditionDefinitions.ConditionPoisoned, $"Condition{NAME}")
+            .SetOrUpdateGuiPresentation(Category.Condition)
+            .SetParentCondition(ConditionDefinitions.ConditionPoisoned)
+            // applied at the start of each of the target's turns, as the spell's duration ends at start of turn
+            .SetRecurrentEffectForms(
+                EffectFormBuilder
+                    .Create()
+                    .SetDamageForm(DamageTypePoison, 2, DieType.D10)
+                    .Build())
+            .AddToDB();
+
+        conditionFesteringBlast.specialDuration = false;
+
+        var spell = SpellDefinitionBuilder
+            .Create(NAME)
+            .SetGuiPresentation(Category.Spell, CloudKill)
+            .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolNecromancy)
+            .SetSpellLevel(4)
+            .SetCastingTime(ActivationTime.Action)
+            .SetMaterialComponent(MaterialComponentType.None)
+            .SetSomaticComponent(true)
+            .SetVerboseComponent(true)
+            .SetVocalSpellSameType(VocalSpellSemeType.Attack)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetDurationData(DurationType.Minute, 1, TurnOccurenceType.StartOfTurn)
+                    // RAW the line is 10 feet wide; Solasta lines are always 5 feet wide
+                    .SetTargetingData(Side.All, RangeType.Self, 0, TargetType.Line, 12)
+                    .ExcludeCaster()
+                    .SetEffectAdvancement(EffectIncrementMethod.PerAdditionalSlotLevel, additionalDicePerIncrement: 1)
+                    .SetSavingThrowData(false, AttributeDefinitions.Constitution, false,
+                        EffectDifficultyClassComputation.SpellCastingFeature)
+                    .SetEffectForms(
+                        EffectFormBuilder
+                            .Create()
+                            .HasSavingThrow(EffectSavingThrowType.Negates)
+                            .SetDamageForm(DamageTypeNecrotic, 4, DieType.D10)
+                            .Build(),
+                        EffectFormBuilder
+                            .Create()
+                            .HasSavingThrow(EffectSavingThrowType.Negates, TurnOccurenceType.EndOfTurn, true)
+                            .SetConditionForm(conditionFesteringBlast, ConditionForm.ConditionOperation.Add)
+                            .Build())
+                    .SetParticleEffectParameters(PowerDragonbornBreathWeaponBlack)
+                    .SetImpactEffectParameters(PoisonSpray)
+                    .Build())
+            .AddToDB();
+
+        return spell;
     }
 
     #endregion

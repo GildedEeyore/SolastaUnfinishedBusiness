@@ -364,6 +364,7 @@ internal static class SpellsContext
         RegisterSpell(BuildIntellectFortress(), 0, SpellListBard, SpellListSorcerer, SpellListWarlock, SpellListWizard,
             spellListInventorClass);
         RegisterSpell(SpiritShroud, 0, SpellListCleric, SpellListPaladin, SpellListWarlock, SpellListWizard);
+        RegisterSpell(BuildSummonUndead(), 0, SpellListWarlock, SpellListWizard);
         RegisterSpell(BuildVitalityTransfer(), 0, SpellListCleric, SpellListWizard);
         RegisterSpell(BuildWinterBreath(), 0, SpellListDruid, SpellListSorcerer, SpellListWizard);
 
@@ -377,6 +378,7 @@ internal static class SpellsContext
         RegisterSpell(BuildElementalBane(), 0, SpellListDruid, SpellListWarlock, SpellListWizard,
             spellListInventorClass);
         RegisterSpell(BuildFaithfulHound(), 0, SpellListWizard, spellListInventorClass);
+        RegisterSpell(BuildFesteringBlast(), 0, SpellListDruid, SpellListSorcerer, SpellListWarlock, SpellListWizard);
         RegisterSpell(BuildForestGuardian(), 0, SpellListDruid, SpellListRanger);
         RegisterSpell(BuildGravitySinkhole(), 0, SpellListWizard);
         RegisterSpell(BuildIrresistiblePerformance(), 0, SpellListBard);
@@ -384,6 +386,7 @@ internal static class SpellsContext
         RegisterSpell(BuildPsionicBlast(), 0, SpellListSorcerer, SpellListWarlock, SpellListWizard);
         RegisterSpell(BuildSickeningRadiance(), 0, SpellListSorcerer, SpellListWarlock, SpellListWizard);
         RegisterSpell(StaggeringSmite, 0, SpellListPaladin);
+        RegisterSpell(BuildSummonElemental(), 0, SpellListDruid, SpellListRanger, SpellListWizard);
         RegisterSpell(VitriolicSphere, 0, SpellListSorcerer, SpellListWizard);
 
         //5th level
@@ -397,6 +400,7 @@ internal static class SpellsContext
         RegisterSpell(BuildHolyWeapon(), 0, SpellListCleric, SpellListPaladin);
         RegisterSpell(BuildIncineration(), 0, SpellListSorcerer, SpellListWizard);
         RegisterSpell(MantleOfThorns, 0, SpellListDruid);
+        RegisterSpell(BuildNegativeEnergyFlood(), 0, SpellListWarlock, SpellListWizard);
         RegisterSpell(SteelWhirlwind, 0, SpellListRanger, SpellListWizard);
         RegisterSpell(SonicBoom, 0, SpellListSorcerer, SpellListWizard);
         RegisterSpell(BuildSwiftQuiver(), 0, SpellListRanger);

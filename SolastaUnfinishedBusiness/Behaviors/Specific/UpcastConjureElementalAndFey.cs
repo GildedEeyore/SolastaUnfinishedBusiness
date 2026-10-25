@@ -7,7 +7,15 @@ namespace SolastaUnfinishedBusiness.Behaviors.Specific;
 
 internal static class UpcastConjureElementalAndFey
 {
+    // subspells that only show when cast with the slot level they were built for (Summon Elemental, Summon Undead)
+    private static readonly Dictionary<SpellDefinition, int> SlotLevelBySubspell = [];
+
     private static List<SpellDefinition> _filteredSubspells;
+
+    internal static void RegisterSlotLevelSubspell(SpellDefinition subspell, int slotLevel)
+    {
+        SlotLevelBySubspell[subspell] = slotLevel;
+    }
 
     /**
      * Patch implementation
@@ -15,7 +23,7 @@ internal static class UpcastConjureElementalAndFey
      */
     internal static bool CheckSubSpellActivated(SubspellSelectionModal __instance, int index)
     {
-        if (!Main.Settings.EnableUpcastConjureElementalAndFey || _filteredSubspells is not { Count: > 0 })
+        if (_filteredSubspells is not { Count: > 0 })
         {
             return true;
         }
@@ -43,6 +51,18 @@ internal static class UpcastConjureElementalAndFey
     internal static List<SpellDefinition> SubspellsList([NotNull] SpellDefinition masterSpell, int slotLevel)
     {
         var subspellsList = masterSpell.SubspellsList;
+
+        _filteredSubspells = null;
+
+        if (subspellsList != null && subspellsList.Any(SlotLevelBySubspell.ContainsKey))
+        {
+            _filteredSubspells = subspellsList
+                .Where(x => SlotLevelBySubspell.TryGetValue(x, out var level) && level == slotLevel)
+                .ToList();
+
+            return _filteredSubspells;
+        }
+
         var mySlotLevel =
             masterSpell.Name == DatabaseHelper.SpellDefinitions.ConjureElemental.Name ||
             masterSpell.Name == DatabaseHelper.SpellDefinitions.ConjureFey.Name

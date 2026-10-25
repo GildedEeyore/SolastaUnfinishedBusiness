@@ -1912,6 +1912,438 @@ internal static partial class SpellBuilders
 
     #endregion
 
+    #region Summon Spirits
+
+    // shared by Summon Elemental and Summon Undead
+
+    private static ConditionDefinition BuildSummonSpiritConditionAttackRoll(string name)
+    {
+        var attackModifier = FeatureDefinitionAttackModifierBuilder
+            .Create($"AttackModifier{name}AttackRoll")
+            .SetGuiPresentation("Feedback/&SummonSpiritBonusTitle", Gui.NoLocalization)
+            .SetAttackRollModifier(1, AttackModifierMethod.SourceConditionAmount)
+            .AddToDB();
+
+        // amount is the caster's spell attack modifier, set when the spirit is summoned
+        return ConditionDefinitionBuilder
+            .Create($"Condition{name}AttackRoll")
+            .SetGuiPresentationNoContent(true)
+            .SetSilent(Silent.WhenAddedOrRemoved)
+            .SetFeatures(attackModifier)
+            .AddToDB();
+    }
+
+    private static FeatureDefinition BuildSummonSpiritInitiative(string name)
+    {
+        return FeatureDefinitionBuilder
+            .Create($"Feature{name}Initiative")
+            .SetGuiPresentationNoContent(true)
+            .AddCustomSubFeatures(ForceInitiativeToSummoner.Mark)
+            .AddToDB();
+    }
+
+    private static FeatureDefinitionConditionAffinity GetSummonSpiritConditionImmunity(ConditionDefinition condition)
+    {
+        var name = $"ConditionAffinitySummonSpirit{condition.Name}Immunity";
+
+        if (TryGetDefinition<FeatureDefinitionConditionAffinity>(name, out var conditionAffinity))
+        {
+            return conditionAffinity;
+        }
+
+        return FeatureDefinitionConditionAffinityBuilder
+            .Create(name)
+            .SetGuiPresentation(Category.Feature)
+            .SetConditionAffinityType(ConditionAffinityType.Immunity)
+            .SetConditionType(condition)
+            .AddToDB();
+    }
+
+    private static MonsterAttackDefinition GetSummonSpiritBaseAttack(MonsterDefinition monster, string attackName)
+    {
+        return TryGetDefinition<MonsterAttackDefinition>(attackName, out var attack)
+            ? attack
+            : monster.AttackIterations[0].MonsterAttackDefinition;
+    }
+
+    private static MonsterAttackDefinition BuildSummonSpiritAttack(
+        MonsterAttackDefinition baseAttack,
+        string name,
+        string title,
+        params EffectForm[] effectForms)
+    {
+        var attack = MonsterAttackDefinitionBuilder
+            .Create(baseAttack, name)
+            .SetGuiPresentation(title, Category.Monster, baseAttack)
+            // the caster's spell attack modifier is added by the AttackRoll condition
+            .SetToHitBonus(0)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create(baseAttack.EffectDescription)
+                    .SetEffectForms(effectForms)
+                    .Build())
+            .AddToDB();
+
+        attack.limitedUse = false;
+        attack.maxUses = -1;
+
+        return attack;
+    }
+
+    private sealed class PowerOrSpellFinishedByMeSummonSpirit(
+        // ReSharper disable once SuggestBaseTypeForParameterInConstructor
+        ConditionDefinition conditionAttackRoll,
+        // ReSharper disable once SuggestBaseTypeForParameterInConstructor
+        ConditionDefinition conditionSaveDC = null) : IPowerOrSpellFinishedByMe
+    {
+        public IEnumerator OnPowerOrSpellFinishedByMe(CharacterActionMagicEffect action, BaseDefinition baseDefinition)
+        {
+            if (action is not CharacterActionCastSpell actionCastSpell)
+            {
+                yield break;
+            }
+
+            var activeSpell = actionCastSpell.ActiveSpell;
+            var rulesetCaster = action.ActingCharacter.RulesetCharacter;
+            var saveDC = activeSpell.SpellRepertoire?.SaveDC ??
+                         rulesetCaster.SpellRepertoires.Select(x => x.SaveDC).DefaultIfEmpty(10).Max();
+
+            foreach (var rulesetSpirit in EffectHelpers.GetSummonedCreatures(activeSpell))
+            {
+                rulesetSpirit.InflictCondition(
+                    conditionAttackRoll.Name,
+                    DurationType.Permanent,
+                    0,
+                    TurnOccurenceType.EndOfTurn,
+                    AttributeDefinitions.TagEffect,
+                    rulesetCaster.Guid,
+                    rulesetCaster.CurrentFaction.Name,
+                    1,
+                    conditionAttackRoll.Name,
+                    activeSpell.MagicAttackBonus,
+                    0,
+                    0);
+
+                if (!conditionSaveDC ||
+                    rulesetSpirit is not RulesetCharacterMonster rulesetMonster ||
+                    !rulesetMonster.MonsterDefinition.Features.Contains(FeatureSummonUndeadFesteringAura))
+                {
+                    continue;
+                }
+
+                rulesetSpirit.InflictCondition(
+                    conditionSaveDC.Name,
+                    DurationType.Permanent,
+                    0,
+                    TurnOccurenceType.EndOfTurn,
+                    AttributeDefinitions.TagEffect,
+                    rulesetCaster.Guid,
+                    rulesetCaster.CurrentFaction.Name,
+                    1,
+                    conditionSaveDC.Name,
+                    saveDC,
+                    0,
+                    0);
+            }
+        }
+    }
+
+    #endregion
+
+    #region Summon Undead
+
+    private const string SummonUndeadName = "SummonUndead";
+    private const string ConditionSummonUndeadSaveDCName = $"Condition{SummonUndeadName}SaveDC";
+
+    private static FeatureDefinition FeatureSummonUndeadFesteringAura { get; set; }
+
+    internal static SpellDefinition BuildSummonUndead()
+    {
+        const string NAME = SummonUndeadName;
+
+        var conditionAttackRoll = BuildSummonSpiritConditionAttackRoll(NAME);
+
+        // amount is the caster's spell save DC, used by Festering Aura
+        var conditionSaveDC = ConditionDefinitionBuilder
+            .Create(ConditionSummonUndeadSaveDCName)
+            .SetGuiPresentationNoContent(true)
+            .SetSilent(Silent.WhenAddedOrRemoved)
+            .AddToDB();
+
+        FeatureSummonUndeadFesteringAura = FeatureDefinitionBuilder
+            .Create($"Feature{NAME}FesteringAura")
+            .SetGuiPresentation(Category.Feature)
+            .AddToDB();
+
+        var featureRottingClaw = FeatureDefinitionBuilder
+            .Create($"Feature{NAME}RottingClaw")
+            .SetGuiPresentation(Category.Feature)
+            .AddToDB();
+
+        featureRottingClaw.AddCustomSubFeatures(new PhysicalAttackFinishedByMeRottingClaw());
+
+        var commonFeatures = new[]
+        {
+            BuildSummonSpiritInitiative(NAME), FeatureDefinitionMoveModes.MoveModeMove6,
+            FeatureDefinitionSenses.SenseNormalVision, FeatureDefinitionSenses.SenseDarkvision12,
+            FeatureDefinitionDamageAffinitys.DamageAffinityNecroticImmunity,
+            FeatureDefinitionDamageAffinitys.DamageAffinityPoisonImmunity,
+            FeatureDefinitionConditionAffinitys.ConditionAffinityExhaustionImmunity,
+            FeatureDefinitionConditionAffinitys.ConditionAffinityFrightenedImmunity,
+            FeatureDefinitionConditionAffinitys.ConditionAffinityFrightenedFearImmunity,
+            GetSummonSpiritConditionImmunity(ConditionDefinitions.ConditionParalyzed),
+            FeatureDefinitionConditionAffinitys.ConditionAffinityPoisonImmunity
+        };
+
+        var attackGhostly = GetSummonSpiritBaseAttack(MonsterDefinitions.Ghost, "Attack_Ghost_Withering_Touch");
+        var attackPutrid = GetSummonSpiritBaseAttack(MonsterDefinitions.Ghoul, "Attack_Ghoul_Claw");
+        var attackSkeletal = GetSummonSpiritBaseAttack(MonsterDefinitions.Skeleton_Archer, "Attack_Skeleton_ShortBow");
+
+        var subSpells = new List<SpellDefinition>();
+
+        // RAW the spell's level sets the spirit's stats, so build one spirit per form and slot level
+        for (var level = 3; level <= 9; level++)
+        {
+            var bonus = 3 + level;
+
+            var ghostlyAttack = BuildSummonSpiritAttack(
+                attackGhostly, $"Attack{NAME}Ghostly{level}", $"Attack{NAME}DeathlyTouch",
+                EffectFormBuilder.DamageForm(DamageTypeNecrotic, 1, DieType.D8, bonus),
+                EffectFormBuilder.ConditionForm(ConditionDefinitions.ConditionFrightened));
+
+            // frightened until the end of the target's next turn
+            ghostlyAttack.EffectDescription.durationType = DurationType.Round;
+            ghostlyAttack.EffectDescription.durationParameter = 1;
+            ghostlyAttack.EffectDescription.endOfEffect = TurnOccurenceType.EndOfTurn;
+
+            var ghostly = BuildSummonUndeadSpirit(
+                "Ghostly", level, MonsterDefinitions.Ghost, 30, ghostlyAttack,
+                [.. commonFeatures, FeatureDefinitionMoveModes.MoveModeFly8]);
+
+            var putrid = BuildSummonUndeadSpirit(
+                "Putrid", level, MonsterDefinitions.Ghoul, 30,
+                BuildSummonSpiritAttack(
+                    attackPutrid, $"Attack{NAME}Putrid{level}", $"Attack{NAME}RottingClaw",
+                    EffectFormBuilder.DamageForm(DamageTypeSlashing, 1, DieType.D6, bonus)),
+                [.. commonFeatures, FeatureSummonUndeadFesteringAura, featureRottingClaw]);
+
+            var skeletalAttack = BuildSummonSpiritAttack(
+                attackSkeletal, $"Attack{NAME}Skeletal{level}", $"Attack{NAME}GraveBolt",
+                EffectFormBuilder.DamageForm(DamageTypeNecrotic, 2, DieType.D4, bonus));
+
+            // range 150 ft
+            skeletalAttack.closeRange = 30;
+            skeletalAttack.maxRange = 30;
+
+            var skeletal = BuildSummonUndeadSpirit(
+                "Skeletal", level, MonsterDefinitions.Skeleton_Archer, 20, skeletalAttack,
+                commonFeatures);
+
+            subSpells.Add(BuildSummonUndeadSubSpell("Ghostly", level, ghostly,
+                Sprites.GetSprite("SpellRaiseGhost", Resources.SpellRaiseGhost, 128)));
+            subSpells.Add(BuildSummonUndeadSubSpell("Putrid", level, putrid,
+                Sprites.GetSprite("SpellRaiseGhoul", Resources.SpellRaiseGhoul, 128)));
+            subSpells.Add(BuildSummonUndeadSubSpell("Skeletal", level, skeletal,
+                Sprites.GetSprite("SpellRaiseSkeletonArcher", Resources.SpellRaiseSkeletonArcher, 128)));
+        }
+
+        foreach (var subSpell in subSpells)
+        {
+            subSpell.AddCustomSubFeatures(new PowerOrSpellFinishedByMeSummonSpirit(conditionAttackRoll, conditionSaveDC));
+        }
+
+        var spell = SpellDefinitionBuilder
+            .Create(NAME)
+            .SetGuiPresentation(Category.Spell, Sprites.GetSprite("SpellRaiseSkeleton", Resources.SpellRaiseSkeleton, 128))
+            .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolNecromancy)
+            .SetSpellLevel(3)
+            .SetCastingTime(ActivationTime.Action)
+            // RAW requires a gilded skull worth 300+ GP; no buyable item matches, so a pouch or focus is enough
+            .SetMaterialComponent(MaterialComponentType.Mundane)
+            .SetSomaticComponent(true)
+            .SetVerboseComponent(true)
+            .SetVocalSpellSameType(VocalSpellSemeType.Buff)
+            .SetRequiresConcentration(true)
+            .SetEffectDescription(
+                // UI Only
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetDurationData(DurationType.Hour, 1)
+                    .SetTargetingData(Side.Ally, RangeType.Distance, 18, TargetType.Position)
+                    .Build())
+            .SetSubSpells([.. subSpells])
+            .AddToDB();
+
+        return spell;
+    }
+
+    private static MonsterDefinition BuildSummonUndeadSpirit(
+        string form,
+        int level,
+        MonsterDefinition baseMonster,
+        int baseHitPoints,
+        MonsterAttackDefinition attack,
+        FeatureDefinition[] features)
+    {
+        return MonsterDefinitionBuilder
+            .Create(baseMonster, $"{SummonUndeadName}{form}Spirit{level}")
+            .SetOrUpdateGuiPresentation($"{SummonUndeadName}{form}Spirit", Category.Monster)
+            .SetFeatures(features)
+            .SetAttackIterations(new MonsterAttackIteration(attack, level / 2))
+            .SetArmorClass(11 + level)
+            .SetAbilityScores(12, 16, 15, 4, 10, 9)
+            .SetSavingThrowScores()
+            .SetSkillScores()
+            .SetStandardHitPoints(baseHitPoints + (10 * (level - 3)))
+            .SetSizeDefinition(CharacterSizeDefinitions.Medium)
+            .SetAlignment(MonsterDefinitionBuilder.NeutralAlignment)
+            .SetCharacterFamily(CharacterFamilyDefinitions.Undead.Name)
+            .SetCreatureTags(SummonUndeadName)
+            .SetChallengeRating(0)
+            .NoExperienceGain()
+            .SetDroppedLootDefinition(null)
+            .SetFullyControlledWhenAllied(true)
+            .SetDefaultFaction(FactionDefinitions.Party)
+            .SetBestiaryEntry(BestiaryDefinitions.BestiaryEntry.None)
+            .SetDungeonMakerPresence(MonsterDefinition.DungeonMaker.None)
+            .AddToDB();
+    }
+
+    private static SpellDefinition BuildSummonUndeadSubSpell(
+        string form,
+        int level,
+        MonsterDefinition spirit,
+        AssetReferenceSprite sprite)
+    {
+        var subSpell = SpellDefinitionBuilder
+            .Create($"{SummonUndeadName}{form}{level}")
+            .SetGuiPresentation($"{SummonUndeadName}{form}", Category.Spell, sprite)
+            .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolNecromancy)
+            .SetSpellLevel(3)
+            .SetCastingTime(ActivationTime.Action)
+            .SetMaterialComponent(MaterialComponentType.Mundane)
+            .SetSomaticComponent(true)
+            .SetVerboseComponent(true)
+            .SetVocalSpellSameType(VocalSpellSemeType.Buff)
+            .SetRequiresConcentration(true)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetDurationData(DurationType.Hour, 1)
+                    .SetTargetingData(Side.Ally, RangeType.Distance, 18, TargetType.Position)
+                    .SetEffectForms(
+                        EffectFormBuilder
+                            .Create()
+                            .SetSummonCreatureForm(1, spirit.Name)
+                            .Build())
+                    .SetParticleEffectParameters(VampiricTouch)
+                    .Build())
+            .AddToDB();
+
+        UpcastConjureElementalAndFey.RegisterSlotLevelSubspell(subSpell, level);
+
+        return subSpell;
+    }
+
+    // called at the start of each creature's turn in battle
+    internal static void HandleSummonUndeadFesteringAura(GameLocationCharacter character)
+    {
+        var battle = Gui.Battle;
+
+        if (battle == null)
+        {
+            return;
+        }
+
+        var rulesetCharacter = character.RulesetCharacter;
+
+        foreach (var spirit in battle.AllContenders
+                     .Where(x =>
+                         x != character &&
+                         x.RulesetCharacter is { IsDeadOrDyingOrUnconscious: false } &&
+                         x.IsWithinRange(character, 1))
+                     .ToArray())
+        {
+            var rulesetSpirit = spirit.RulesetCharacter;
+
+            if (!rulesetSpirit.TryGetConditionOfCategoryAndType(
+                    AttributeDefinitions.TagEffect, ConditionSummonUndeadSaveDCName, out var activeCondition) ||
+                // RAW the aura affects any creature other than the caster
+                activeCondition.SourceGuid == rulesetCharacter.Guid ||
+                rulesetCharacter.IsImmuneToCondition(RuleDefinitions.ConditionPoisoned, rulesetSpirit.Guid, out _))
+            {
+                continue;
+            }
+
+            var outcome = rulesetCharacter.MakeSimpleSavingThrow(
+                AttributeDefinitions.Constitution, activeCondition.Amount, FeatureSummonUndeadFesteringAura,
+                conditionType: RuleDefinitions.ConditionPoisoned);
+
+            if (outcome is RollOutcome.Success or RollOutcome.CriticalSuccess)
+            {
+                continue;
+            }
+
+            // until the start of its next turn
+            rulesetCharacter.InflictCondition(
+                RuleDefinitions.ConditionPoisoned,
+                DurationType.Round,
+                1,
+                TurnOccurenceType.StartOfTurn,
+                AttributeDefinitions.TagEffect,
+                rulesetSpirit.Guid,
+                rulesetSpirit.CurrentFaction.Name,
+                1,
+                RuleDefinitions.ConditionPoisoned,
+                0,
+                0,
+                0);
+        }
+    }
+
+    private sealed class PhysicalAttackFinishedByMeRottingClaw : IPhysicalAttackFinishedByMe
+    {
+        public IEnumerator OnPhysicalAttackFinishedByMe(
+            GameLocationBattleManager battleManager,
+            CharacterAction action,
+            GameLocationCharacter attacker,
+            GameLocationCharacter defender,
+            RulesetAttackMode attackMode,
+            RollOutcome rollOutcome,
+            int damageAmount)
+        {
+            var rulesetDefender = defender.RulesetCharacter;
+
+            if (rollOutcome is not (RollOutcome.Success or RollOutcome.CriticalSuccess) ||
+                attackMode?.SourceDefinition is not MonsterAttackDefinition monsterAttack ||
+                !monsterAttack.Name.StartsWith($"Attack{SummonUndeadName}Putrid") ||
+                rulesetDefender is not { IsDeadOrDyingOrUnconscious: false } ||
+                !rulesetDefender.HasConditionOfTypeOrSubType(RuleDefinitions.ConditionPoisoned))
+            {
+                yield break;
+            }
+
+            var rulesetAttacker = attacker.RulesetCharacter;
+
+            // until the end of its next turn
+            rulesetDefender.InflictCondition(
+                RuleDefinitions.ConditionParalyzed,
+                DurationType.Round,
+                1,
+                TurnOccurenceType.EndOfTurn,
+                AttributeDefinitions.TagEffect,
+                rulesetAttacker.Guid,
+                rulesetAttacker.CurrentFaction.Name,
+                1,
+                RuleDefinitions.ConditionParalyzed,
+                0,
+                0,
+                0);
+        }
+    }
+
+    #endregion
+
     #region Vitality Transfer
 
     internal static SpellDefinition BuildVitalityTransfer()
