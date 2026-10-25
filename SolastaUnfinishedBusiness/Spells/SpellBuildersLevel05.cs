@@ -1533,6 +1533,7 @@ internal static partial class SpellBuilders
         spell.implemented = true;
         spell.materialComponentType = MaterialComponentType.Mundane;
         spell.specificMaterialComponentConsumed = false;
+        spell.GuiPresentation.spriteReference = Sprites.GetSprite("WallOfForce", Resources.WallOfForce, 128);
 
         // vanilla MoveBlocker topology is never processed by the game; see GameLocationEnvironmentManagerPatcher
         // and GameLocationPositioningManagerPatcher for the code that makes it block movement
@@ -1608,7 +1609,7 @@ internal static partial class SpellBuilders
 
         var spell = SpellDefinitionBuilder
             .Create(NAME)
-            .SetGuiPresentation(Category.Spell, CircleOfDeath)
+            .SetGuiPresentation(Category.Spell, Sprites.GetSprite(NAME, Resources.NegativeEnergyFlood, 128))
             .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolNecromancy)
             .SetSpellLevel(5)
             .SetCastingTime(ActivationTime.Action)

@@ -5591,5 +5591,135 @@ namespace SolastaUnfinishedBusiness.Properties {
                 return ((byte[])(obj));
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] WallOfForce {
+            get {
+                object obj = ResourceManager.GetObject("WallOfForce", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] Wardaway {
+            get {
+                object obj = ResourceManager.GetObject("Wardaway", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] ArcaneVigor {
+            get {
+                object obj = ResourceManager.GetObject("ArcaneVigor", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] ElminstersElusion {
+            get {
+                object obj = ResourceManager.GetObject("ElminstersElusion", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] GentleRepose {
+            get {
+                object obj = ResourceManager.GetObject("GentleRepose", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] CacophonicShield {
+            get {
+                object obj = ResourceManager.GetObject("CacophonicShield", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] LaeralsSilverLance {
+            get {
+                object obj = ResourceManager.GetObject("LaeralsSilverLance", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] SummonUndead {
+            get {
+                object obj = ResourceManager.GetObject("SummonUndead", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] Backlash {
+            get {
+                object obj = ResourceManager.GetObject("Backlash", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] SummonElemental {
+            get {
+                object obj = ResourceManager.GetObject("SummonElemental", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] FesteringBlast {
+            get {
+                object obj = ResourceManager.GetObject("FesteringBlast", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] NegativeEnergyFlood {
+            get {
+                object obj = ResourceManager.GetObject("NegativeEnergyFlood", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] PowerWordFortify {
+            get {
+                object obj = ResourceManager.GetObject("PowerWordFortify", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
     }
 }

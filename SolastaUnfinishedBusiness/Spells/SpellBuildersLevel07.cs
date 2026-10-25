@@ -304,7 +304,7 @@ internal static partial class SpellBuilders
         // temporary hit points are granted by the custom behavior as they depend on the number of targets
         return SpellDefinitionBuilder
             .Create(NAME)
-            .SetGuiPresentation(Category.Spell, Aid)
+            .SetGuiPresentation(Category.Spell, Sprites.GetSprite(NAME, Resources.PowerWordFortify, 128))
             .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolEnchantment)
             .SetSpellLevel(7)
             .SetCastingTime(ActivationTime.Action)

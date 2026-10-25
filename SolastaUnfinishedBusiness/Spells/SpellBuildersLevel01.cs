@@ -769,7 +769,7 @@ internal static partial class SpellBuilders
 
         _spellWardaway = SpellDefinitionBuilder
             .Create(NAME)
-            .SetGuiPresentation(Category.Spell, Slow)
+            .SetGuiPresentation(Category.Spell, Sprites.GetSprite(NAME, Resources.Wardaway, 128))
             .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolAbjuration)
             .SetSpellLevel(1)
             .SetCastingTime(ActivationTime.Action)
