@@ -49,6 +49,7 @@ internal static class RacesContext
 
         LoadSubrace(RaceTieflingBuilder.RaceTieflingDevilTongue);
         LoadSubrace(RaceTieflingBuilder.RaceTieflingFeral);
+        LoadSubrace(RaceTieflingBuilder.RaceTieflingLevistus);
         LoadSubrace(RaceTieflingBuilder.RaceTieflingMephistopheles);
         LoadSubrace(RaceTieflingBuilder.RaceTieflingZariel);
 

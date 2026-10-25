@@ -2478,6 +2478,55 @@ internal static partial class SpellBuilders
             .AddToDB();
     }
 
+    // Levistus tiefling version: always cast as a 2nd-level spell from a racial slot that can't be upcast
+    internal static SpellDefinition BuildSkinOfRetributionTiefling()
+    {
+        const int EFFECT_LEVEL = 2;
+
+        var damageAffinitySkinOfRetribution =
+            GetDefinition<FeatureDefinitionDamageAffinity>($"DamageAffinity{SkinOfRetributionName}");
+
+        var conditionSkinOfRetributionTiefling = ConditionDefinitionBuilder
+            .Create($"Condition{SkinOfRetributionName}Tiefling")
+            .SetGuiPresentation(Category.Condition,
+                Sprites.GetSprite("ConditionMirrorImage", Resources.ConditionMirrorImage, 32))
+            .SetSilent(Silent.WhenAdded)
+            .SetPossessive()
+            .SetFeatures(damageAffinitySkinOfRetribution)
+            .CopyParticleReferences(PowerDomainElementalHeraldOfTheElementsCold)
+            .AddToDB();
+
+        conditionSkinOfRetributionTiefling.AddCustomSubFeatures(
+            new CustomBehaviorSkinOfRetribution(conditionSkinOfRetributionTiefling, EFFECT_LEVEL));
+
+        return SpellDefinitionBuilder
+            .Create($"{SkinOfRetributionName}Tiefling")
+            .SetGuiPresentation(Category.Spell,
+                Sprites.GetSprite(SkinOfRetributionName, Resources.SkinOfRetribution, 128))
+            .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolAbjuration)
+            .SetSpellLevel(1)
+            .SetCastingTime(ActivationTime.BonusAction)
+            .SetMaterialComponent(MaterialComponentType.Mundane)
+            .SetVerboseComponent(true)
+            .SetSomaticComponent(true)
+            .SetVocalSpellSameType(VocalSpellSemeType.Defense)
+            .SetUniqueInstance()
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetDurationData(DurationType.Hour, 1)
+                    .SetTargetingData(Side.Ally, RangeType.Self, 0, TargetType.Self)
+                    .SetEffectForms(
+                        EffectFormBuilder
+                            .Create()
+                            .SetTempHpForm(TempHpPerLevelSkinOfRetribution * EFFECT_LEVEL)
+                            .Build(),
+                        EffectFormBuilder.ConditionForm(conditionSkinOfRetributionTiefling))
+                    .SetParticleEffectParameters(ConeOfCold)
+                    .Build())
+            .AddToDB();
+    }
+
     private sealed class ModifyEffectDescriptionSkinOfRetribution(FeatureDefinitionPower powerSkinOfRetribution)
         : IModifyEffectDescription
     {
@@ -2511,7 +2560,9 @@ internal static partial class SpellBuilders
         }
     }
 
-    private sealed class CustomBehaviorSkinOfRetribution(ConditionDefinition conditionSkinOfRetribution)
+    private sealed class CustomBehaviorSkinOfRetribution(
+        ConditionDefinition conditionSkinOfRetribution,
+        int fixedEffectLevel = 0)
         : IMagicEffectBeforeHitConfirmedOnMe, IMagicEffectFinishedOnMe,
             IPhysicalAttackBeforeHitConfirmedOnMe, IPhysicalAttackFinishedOnMe
     {
@@ -2579,7 +2630,8 @@ internal static partial class SpellBuilders
             if (rulesetDefender.TryGetConditionOfCategoryAndType(
                     AttributeDefinitions.TagEffect, conditionSkinOfRetribution.Name, out var activeCondition))
             {
-                defender.SetSpecialFeatureUses(SkinOfRetributionName, activeCondition.EffectLevel);
+                defender.SetSpecialFeatureUses(SkinOfRetributionName,
+                    fixedEffectLevel > 0 ? fixedEffectLevel : activeCondition.EffectLevel);
             }
         }
 
