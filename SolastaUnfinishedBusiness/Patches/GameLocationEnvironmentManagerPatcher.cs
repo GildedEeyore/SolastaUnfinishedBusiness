@@ -67,6 +67,53 @@ public static class GameLocationEnvironmentManagerPatcher
         }
     }
 
+    [HarmonyPatch(typeof(GameLocationEnvironmentManager),
+        nameof(GameLocationEnvironmentManager.ApplyEffectToCharacterList))]
+    [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
+    [UsedImplicitly]
+    public static class ApplyEffectToCharacterList_Patch
+    {
+        [UsedImplicitly]
+        public static void Prefix(
+            GameLocationEnvironmentManager __instance,
+            List<GameLocationCharacter> characterList,
+            RulesetEffect effect,
+            GameLocationCharacter exclusiveCharacter,
+            bool applyEffect)
+        {
+            //PATCH: support for `ApplyRecurrentEffectWhenSourceMoves` (Cacophonic Shield)
+            //vanilla only applies OnEnter to creatures that move into the area, not when the area moves onto them
+            if (!applyEffect ||
+                exclusiveCharacter == null ||
+                exclusiveCharacter.Guid != effect.SourceGuid ||
+                (!exclusiveCharacter.MovingToDestination && !exclusiveCharacter.Pushed) ||
+                (effect.EffectDescription.RecurrentEffect & RecurrentEffect.OnEnter) == 0 ||
+                !effect.SourceDefinition.HasSubFeatureOfType<ApplyRecurrentEffectWhenSourceMoves>())
+            {
+                return;
+            }
+
+            foreach (var character in characterList.ToArray())
+            {
+                if (character == exclusiveCharacter ||
+                    character.MovingToDestination ||
+                    character.Pushed ||
+                    character.AffectingGlobalEffects.Contains(effect) ||
+                    !__instance.affectedCharacters.Contains(character))
+                {
+                    continue;
+                }
+
+                effect.ApplyEffectOnCharacter(character.RulesetActor, true, character.LocationPosition);
+
+                if (effect.Terminated)
+                {
+                    break;
+                }
+            }
+        }
+    }
+
     //BUGFIX: removes LOG and TRACE message
     [HarmonyPatch(typeof(GameLocationEnvironmentManager),
         nameof(GameLocationEnvironmentManager.RegisterGlobalActiveEffect))]

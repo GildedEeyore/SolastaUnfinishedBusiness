@@ -1680,6 +1680,82 @@ internal static partial class SpellBuilders
 
     #endregion
 
+    #region Cacophonic Shield
+
+    internal static SpellDefinition BuildCacophonicShield()
+    {
+        const string Name = "CacophonicShield";
+
+        var conditionDeafened = ConditionDefinitionBuilder
+            .Create(ConditionDefinitions.ConditionDeafened, $"Condition{Name}Deafened")
+            .SetParentCondition(ConditionDefinitions.ConditionDeafened)
+            .SetConditionType(ConditionType.Detrimental)
+            .SetSpecialDuration(DurationType.Round, 1, (TurnOccurenceType)ExtraTurnOccurenceType.StartOfSourceTurn)
+            .AddToDB();
+
+        var combatAffinity = FeatureDefinitionCombatAffinityBuilder
+            .Create($"CombatAffinity{Name}")
+            .SetGuiPresentationNoContent(true)
+            .SetSituationalContext(ExtraSituationalContext.IsRangedAttack)
+            .SetAttackOnMeAdvantage(AdvantageType.Disadvantage)
+            .AddToDB();
+
+        var conditionSelf = ConditionDefinitionBuilder
+            .Create($"Condition{Name}")
+            .SetGuiPresentation(Category.Condition, ConditionShielded)
+            .SetPossessive()
+            .SetFeatures(FeatureDefinitionDamageAffinitys.DamageAffinityThunderResistance, combatAffinity)
+            .AddToDB();
+
+        var spell = SpellDefinitionBuilder
+            .Create(Name)
+            .SetGuiPresentation(Category.Spell, Shatter)
+            .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolEvocation)
+            .SetSpellLevel(3)
+            .SetCastingTime(ActivationTime.Action)
+            .SetMaterialComponent(MaterialComponentType.None)
+            .SetSomaticComponent(true)
+            .SetVerboseComponent(true)
+            .SetVocalSpellSameType(VocalSpellSemeType.Defense)
+            .SetRequiresConcentration(true)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetDurationData(DurationType.Minute, 10)
+                    // RAW the caster picks who is unaffected; here allies are unaffected and enemies are affected
+                    .SetTargetingData(Side.Enemy, RangeType.Self, 0, TargetType.Sphere, 2)
+                    .SetEffectAdvancement(EffectIncrementMethod.PerAdditionalSlotLevel, additionalDicePerIncrement: 1)
+                    .SetSavingThrowData(false, AttributeDefinitions.Constitution, false,
+                        EffectDifficultyClassComputation.SpellCastingFeature)
+                    .SetRecurrentEffect(
+                        RecurrentEffect.OnActivation | RecurrentEffect.OnEnter | RecurrentEffect.OnTurnEnd)
+                    .SetParticleEffectParameters(SpiritGuardians)
+                    .SetCasterEffectParameters(Thunderwave)
+                    .SetImpactEffectParameters(Shatter)
+                    .SetEffectForms(
+                        EffectFormBuilder
+                            .Create()
+                            .SetDamageForm(DamageTypeThunder, 3, DieType.D6)
+                            .HasSavingThrow(EffectSavingThrowType.HalfDamage)
+                            .Build(),
+                        EffectFormBuilder
+                            .Create()
+                            .SetConditionForm(conditionDeafened, ConditionForm.ConditionOperation.Add)
+                            .HasSavingThrow(EffectSavingThrowType.Negates)
+                            .Build(),
+                        EffectFormBuilder.ConditionForm(
+                            conditionSelf, ConditionForm.ConditionOperation.Add, true, true))
+                    .Build())
+            .AddCustomSubFeatures(
+                ApplyRecurrentEffectWhenSourceMoves.Mark,
+                RecurrentEffectOncePerTurn.Mark)
+            .AddToDB();
+
+        return spell;
+    }
+
+    #endregion
+
     #region Spirit Shroud
 
     private const string SpiritShroudName = "SpiritShroud";
