@@ -1665,7 +1665,7 @@ internal static partial class SpellBuilders
 
         var spell = SpellDefinitionBuilder
             .Create(BacklashName)
-            .SetGuiPresentation(Category.Spell, Shield)
+            .SetGuiPresentation(Category.Spell, Sprites.GetSprite(BacklashName, Resources.Backlash, 128))
             .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolAbjuration)
             .SetSpellLevel(4)
             .SetCastingTime(ActivationTime.Reaction)
@@ -2002,7 +2002,7 @@ internal static partial class SpellBuilders
 
         var spell = SpellDefinitionBuilder
             .Create(NAME)
-            .SetGuiPresentation(Category.Spell, ConjureElemental)
+            .SetGuiPresentation(Category.Spell, Sprites.GetSprite(NAME, Resources.SummonElemental, 128))
             .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolConjuration)
             .SetSpellLevel(4)
             .SetCastingTime(ActivationTime.Action)
@@ -2049,7 +2049,7 @@ internal static partial class SpellBuilders
 
         var spell = SpellDefinitionBuilder
             .Create(NAME)
-            .SetGuiPresentation(Category.Spell, CloudKill)
+            .SetGuiPresentation(Category.Spell, Sprites.GetSprite(NAME, Resources.FesteringBlast, 128))
             .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolNecromancy)
             .SetSpellLevel(4)
             .SetCastingTime(ActivationTime.Action)

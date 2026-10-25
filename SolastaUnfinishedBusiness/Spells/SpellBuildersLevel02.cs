@@ -1195,7 +1195,7 @@ internal static partial class SpellBuilders
 
         var spell = SpellDefinitionBuilder
             .Create(NAME)
-            .SetGuiPresentation(Category.Spell, FalseLife)
+            .SetGuiPresentation(Category.Spell, Sprites.GetSprite(NAME, Resources.ArcaneVigor, 128))
             .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolAbjuration)
             .SetSpellLevel(2)
             .SetCastingTime(ActivationTime.BonusAction)
@@ -1347,7 +1347,7 @@ internal static partial class SpellBuilders
 
         var spell = SpellDefinitionBuilder
             .Create(NAME)
-            .SetGuiPresentation(Category.Spell, SpellWard)
+            .SetGuiPresentation(Category.Spell, Sprites.GetSprite(NAME, Resources.ElminstersElusion, 128))
             .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolAbjuration)
             .SetSpellLevel(2)
             .SetCastingTime(ActivationTime.BonusAction)
@@ -1456,7 +1456,7 @@ internal static partial class SpellBuilders
 
         var spell = SpellDefinitionBuilder
             .Create(NAME)
-            .SetGuiPresentation(Category.Spell, SpareTheDying)
+            .SetGuiPresentation(Category.Spell, Sprites.GetSprite(NAME, Resources.GentleRepose, 128))
             .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolNecromancy)
             .SetSpellLevel(2)
             .SetCastingTime(ActivationTime.Action)

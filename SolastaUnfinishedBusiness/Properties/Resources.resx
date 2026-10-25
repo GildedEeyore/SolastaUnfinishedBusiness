@@ -2935,4 +2935,69 @@
         PublicKeyToken=b77a5c561934e089
     </value>
   </data>
+  <data name="WallOfForce" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Spells\WallOfForce.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
+      PublicKeyToken=b03f5f7f11d50a3a
+    </value>
+  </data>
+  <data name="Wardaway" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Spells\Wardaway.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
+      PublicKeyToken=b03f5f7f11d50a3a
+    </value>
+  </data>
+  <data name="ArcaneVigor" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Spells\ArcaneVigor.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
+      PublicKeyToken=b03f5f7f11d50a3a
+    </value>
+  </data>
+  <data name="ElminstersElusion" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Spells\ElminstersElusion.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
+      PublicKeyToken=b03f5f7f11d50a3a
+    </value>
+  </data>
+  <data name="GentleRepose" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Spells\GentleRepose.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
+      PublicKeyToken=b03f5f7f11d50a3a
+    </value>
+  </data>
+  <data name="CacophonicShield" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Spells\CacophonicShield.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
+      PublicKeyToken=b03f5f7f11d50a3a
+    </value>
+  </data>
+  <data name="LaeralsSilverLance" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Spells\LaeralsSilverLance.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
+      PublicKeyToken=b03f5f7f11d50a3a
+    </value>
+  </data>
+  <data name="SummonUndead" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Spells\SummonUndead.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
+      PublicKeyToken=b03f5f7f11d50a3a
+    </value>
+  </data>
+  <data name="Backlash" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Spells\Backlash.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
+      PublicKeyToken=b03f5f7f11d50a3a
+    </value>
+  </data>
+  <data name="SummonElemental" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Spells\SummonElemental.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
+      PublicKeyToken=b03f5f7f11d50a3a
+    </value>
+  </data>
+  <data name="FesteringBlast" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Spells\FesteringBlast.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
+      PublicKeyToken=b03f5f7f11d50a3a
+    </value>
+  </data>
+  <data name="NegativeEnergyFlood" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Spells\NegativeEnergyFlood.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
+      PublicKeyToken=b03f5f7f11d50a3a
+    </value>
+  </data>
+  <data name="PowerWordFortify" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Spells\PowerWordFortify.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
+      PublicKeyToken=b03f5f7f11d50a3a
+    </value>
+  </data>
 </root>

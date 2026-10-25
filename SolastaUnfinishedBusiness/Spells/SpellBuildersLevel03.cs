@@ -1709,7 +1709,7 @@ internal static partial class SpellBuilders
 
         var spell = SpellDefinitionBuilder
             .Create(Name)
-            .SetGuiPresentation(Category.Spell, Shatter)
+            .SetGuiPresentation(Category.Spell, Sprites.GetSprite(Name, Resources.CacophonicShield, 128))
             .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolEvocation)
             .SetSpellLevel(3)
             .SetCastingTime(ActivationTime.Action)
@@ -1764,7 +1764,7 @@ internal static partial class SpellBuilders
 
         var spell = SpellDefinitionBuilder
             .Create(Name)
-            .SetGuiPresentation(Category.Spell, LightningBolt)
+            .SetGuiPresentation(Category.Spell, Sprites.GetSprite(Name, Resources.LaeralsSilverLance, 128))
             .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolEvocation)
             .SetSpellLevel(3)
             .SetCastingTime(ActivationTime.Action)
@@ -2154,7 +2154,7 @@ internal static partial class SpellBuilders
 
         var spell = SpellDefinitionBuilder
             .Create(NAME)
-            .SetGuiPresentation(Category.Spell, Sprites.GetSprite("SpellRaiseSkeleton", Resources.SpellRaiseSkeleton, 128))
+            .SetGuiPresentation(Category.Spell, Sprites.GetSprite(NAME, Resources.SummonUndead, 128))
             .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolNecromancy)
             .SetSpellLevel(3)
             .SetCastingTime(ActivationTime.Action)
