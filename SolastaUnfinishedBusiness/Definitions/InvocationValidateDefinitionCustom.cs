@@ -33,9 +33,15 @@ internal class InvocationDefinitionCustom : InvocationDefinition, IValidateDefin
         }
     }
 
-    //TODO: add validator setter
-    public IEnumerable<IValidateDefinitionPreRequisites.Validate> Validators { get; } =
+    private readonly List<IValidateDefinitionPreRequisites.Validate> _validators =
         [CheckRequiredLevel, CheckRequiredSpell, CheckRequiredPact];
+
+    public IEnumerable<IValidateDefinitionPreRequisites.Validate> Validators => _validators;
+
+    internal void AddValidators(params IValidateDefinitionPreRequisites.Validate[] validators)
+    {
+        _validators.AddRange(validators);
+    }
 
     private static bool CheckRequiredLevel(
         RulesetCharacter character,

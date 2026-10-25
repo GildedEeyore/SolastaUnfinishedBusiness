@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
@@ -9,6 +10,7 @@ using SolastaUnfinishedBusiness.Behaviors;
 using SolastaUnfinishedBusiness.Builders;
 using SolastaUnfinishedBusiness.Builders.Features;
 using SolastaUnfinishedBusiness.CustomUI;
+using SolastaUnfinishedBusiness.Feats;
 using SolastaUnfinishedBusiness.Interfaces;
 using SolastaUnfinishedBusiness.Models;
 using SolastaUnfinishedBusiness.Properties;
@@ -248,23 +250,608 @@ internal static class InvocationsBuilders
             .AddToDB();
     }
 
+    #region Gift of the Protectors
+
+    // 2024 version: up to CHA modifier creatures write their name in the Book of Shadows; the first named creature
+    // reduced to 0 HP drops to 1 HP instead, and then nobody benefits again until the warlock finishes a long rest
     internal static InvocationDefinition BuildGiftOfTheProtectors()
     {
         const string NAME = "InvocationGiftOfTheProtectors";
+
+        // the name on the page
+        var conditionName = ConditionDefinitionBuilder
+            .Create($"Condition{NAME}Name")
+            .SetGuiPresentation($"Condition{NAME}Name", Category.Condition,
+                ConditionDefinitions.ConditionBlessed)
+            .SetConditionType(ConditionType.Beneficial)
+            .SetPossessive()
+            .SetSilent(Silent.WhenRemoved)
+            .AddToDB();
+
+        // the protection itself, removed by the game when it prevents a knock out
+        var conditionWard = ConditionDefinitionBuilder
+            .Create($"Condition{NAME}Ward")
+            .SetGuiPresentationNoContent(true)
+            .SetSilent(Silent.WhenAddedOrRemoved)
+            .SetFeatures(
+                FeatureDefinitionDamageAffinityBuilder
+                    .Create(DamageAffinityHalfOrcRelentlessEndurance, $"DamageAffinity{NAME}")
+                    .SetGuiPresentation(NAME, Category.Invocation)
+                    .AddToDB())
+            .AddToDB();
+
+        conditionWard.Features.OfType<FeatureDefinitionDamageAffinity>().First().knockOutAffinity =
+            KnockoutAffinity.Always;
+
+        // on the warlock while the magic is spent
+        var conditionSpent = ConditionDefinitionBuilder
+            .Create($"Condition{NAME}Spent")
+            .SetGuiPresentation($"Condition{NAME}Spent", Category.Condition,
+                ConditionDefinitions.ConditionDazzled)
+            .SetConditionType(ConditionType.Neutral)
+            .SetPossessive()
+            .SetSilent(Silent.WhenAddedOrRemoved)
+            .AddToDB();
+
+        var powerInscribe = FeatureDefinitionPowerBuilder
+            .Create($"Power{NAME}Inscribe")
+            .SetGuiPresentation(Category.Feature, PowerPaladinLayOnHands)
+            .SetUsesFixed(ActivationTime.Action)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetTargetingData(Side.Ally, RangeType.Touch, 0, TargetType.IndividualsUnique)
+                    .SetParticleEffectParameters(Bless)
+                    .Build())
+            .AddToDB();
+
+        var powerErase = FeatureDefinitionPowerBuilder
+            .Create($"Power{NAME}Erase")
+            .SetGuiPresentation(Category.Feature, PowerPaladinLayOnHands)
+            .SetUsesFixed(ActivationTime.Action)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetTargetingData(Side.Ally, RangeType.Distance, 24, TargetType.IndividualsUnique)
+                    .Build())
+            .AddToDB();
+
+        var protectors = new GiftOfTheProtectors(conditionName, conditionWard, conditionSpent);
+
+        powerInscribe.AddCustomSubFeatures(new PowerGiftOfTheProtectorsInscribe(protectors));
+        powerErase.AddCustomSubFeatures(new PowerGiftOfTheProtectorsErase(protectors));
+        conditionName.AddCustomSubFeatures(new OnConditionAddedOrRemovedGiftOfTheProtectorsName(protectors));
+        conditionWard.AddCustomSubFeatures(new OnConditionAddedOrRemovedGiftOfTheProtectorsWard(protectors));
+        conditionSpent.AddCustomSubFeatures(new OnConditionAddedOrRemovedGiftOfTheProtectorsSpent(protectors));
 
         return InvocationDefinitionBuilder
             .Create(NAME)
             .SetGuiPresentation(Category.Invocation, DamageAffinityHalfOrcRelentlessEndurance)
             .SetRequirements(9, pact: FeatureSetPactTome)
             .SetGrantedFeature(
-                FeatureDefinitionDamageAffinityBuilder
-                    .Create(
-                        DamageAffinityHalfOrcRelentlessEndurance,
-                        "DamageAffinityInvocationGiftOfTheProtectorsRelentlessEndurance")
+                FeatureDefinitionFeatureSetBuilder
+                    .Create($"FeatureSet{NAME}")
                     .SetGuiPresentation(NAME, Category.Invocation)
+                    .AddFeatureSet(powerInscribe, powerErase)
                     .AddToDB())
             .AddToDB();
     }
+
+    private sealed class GiftOfTheProtectors(
+        ConditionDefinition conditionName,
+        ConditionDefinition conditionWard,
+        ConditionDefinition conditionSpent)
+    {
+        internal ConditionDefinition ConditionName => conditionName;
+
+        // the campaign party is also checked as there are no location characters while resting on the world map
+        internal static IEnumerable<RulesetCharacter> PartyAndGuests()
+        {
+            var characters = new List<RulesetCharacter>();
+            var characterService = ServiceRepository.GetService<IGameLocationCharacterService>();
+
+            if (characterService != null)
+            {
+                characters.AddRange(characterService.PartyCharacters
+                    .Union(characterService.GuestCharacters)
+                    .Select(x => x.RulesetCharacter));
+            }
+
+            if (Gui.GameCampaign?.Party?.CharactersList != null)
+            {
+                characters.AddRange(Gui.GameCampaign.Party.CharactersList.Select(x => x.RulesetCharacter));
+            }
+
+            return characters.Where(x => x != null).Distinct();
+        }
+
+        internal static int MaxNames(RulesetCharacter warlock)
+        {
+            return Math.Max(1, AttributeDefinitions.ComputeAbilityScoreModifier(
+                warlock.TryGetAttributeValue(AttributeDefinitions.Charisma)));
+        }
+
+        internal bool HasNameFrom(RulesetCharacter character, RulesetCharacter warlock)
+        {
+            return character.TryGetConditionOfCategoryAndType(
+                       AttributeDefinitions.TagEffect, conditionName.Name, out var activeCondition) &&
+                   activeCondition.SourceGuid == warlock.Guid;
+        }
+
+        internal List<RulesetCharacter> NamedBy(RulesetCharacter warlock)
+        {
+            return PartyAndGuests().Where(x => HasNameFrom(x, warlock)).ToList();
+        }
+
+        internal bool IsSpent(RulesetCharacter warlock)
+        {
+            return warlock.HasConditionOfCategoryAndType(AttributeDefinitions.TagEffect, conditionSpent.Name);
+        }
+
+        internal void AddName(RulesetCharacter target, RulesetCharacter warlock)
+        {
+            target.InflictCondition(
+                conditionName.Name,
+                DurationType.Permanent,
+                0,
+                TurnOccurenceType.StartOfTurn,
+                AttributeDefinitions.TagEffect,
+                warlock.Guid,
+                warlock.CurrentFaction.Name,
+                1,
+                conditionName.Name,
+                0,
+                0,
+                0);
+        }
+
+        internal void AddWard(RulesetCharacter target, ulong warlockGuid, string factionName)
+        {
+            if (target.HasConditionOfCategoryAndType(AttributeDefinitions.TagEffect, conditionWard.Name))
+            {
+                return;
+            }
+
+            target.InflictCondition(
+                conditionWard.Name,
+                DurationType.Permanent,
+                0,
+                TurnOccurenceType.StartOfTurn,
+                AttributeDefinitions.TagEffect,
+                warlockGuid,
+                factionName,
+                1,
+                conditionWard.Name,
+                0,
+                0,
+                0);
+        }
+
+        // set while wards are taken away on purpose, so their removal isn't read as the protection triggering
+        internal bool RemovingWards { get; private set; }
+
+        internal void RemoveWardsFrom(ulong warlockGuid)
+        {
+            RemovingWards = true;
+
+            try
+            {
+                foreach (var character in PartyAndGuests())
+                {
+                    RemoveConditionFrom(character, conditionWard, warlockGuid);
+                }
+            }
+            finally
+            {
+                RemovingWards = false;
+            }
+        }
+
+        internal void RestoreWardsFrom(RulesetCharacter warlock)
+        {
+            foreach (var character in NamedBy(warlock))
+            {
+                AddWard(character, warlock.Guid, warlock.CurrentFaction.Name);
+            }
+        }
+
+        internal void Spend(RulesetCharacter warlock)
+        {
+            if (!IsSpent(warlock))
+            {
+                warlock.InflictCondition(
+                    conditionSpent.Name,
+                    DurationType.UntilLongRest,
+                    0,
+                    TurnOccurenceType.StartOfTurn,
+                    AttributeDefinitions.TagEffect,
+                    warlock.Guid,
+                    warlock.CurrentFaction.Name,
+                    1,
+                    conditionSpent.Name,
+                    0,
+                    0,
+                    0);
+            }
+
+            RemoveWardsFrom(warlock.Guid);
+        }
+
+        // name first so the ward removal isn't mistaken for the protection triggering
+        internal void Erase(RulesetCharacter target, ulong warlockGuid)
+        {
+            RemoveConditionFrom(target, conditionName, warlockGuid);
+            RemoveConditionFrom(target, conditionWard, warlockGuid);
+        }
+
+        private static void RemoveConditionFrom(
+            RulesetCharacter character, BaseDefinition condition, ulong sourceGuid)
+        {
+            if (!character.ConditionsByCategory.TryGetValue(AttributeDefinitions.TagEffect, out var conditions))
+            {
+                return;
+            }
+
+            foreach (var activeCondition in conditions
+                         .Where(x => x.ConditionDefinition == condition && x.SourceGuid == sourceGuid)
+                         .ToArray())
+            {
+                character.RemoveCondition(activeCondition);
+            }
+        }
+    }
+
+    private sealed class PowerGiftOfTheProtectorsInscribe(GiftOfTheProtectors protectors)
+        : IValidatePowerUse, IFilterTargetingCharacter, IPowerOrSpellFinishedByMe
+    {
+        public bool EnforceFullSelection => false;
+
+        public bool IsValid(CursorLocationSelectTarget __instance, GameLocationCharacter target)
+        {
+            var warlock = __instance.ActionParams.ActingCharacter.RulesetCharacter;
+
+            if (!protectors.HasNameFrom(target.RulesetCharacter, warlock))
+            {
+                return true;
+            }
+
+            __instance.actionModifier.FailureFlags.Add("Failure/&GiftOfTheProtectorsAlreadyNamed");
+
+            return false;
+        }
+
+        public IEnumerator OnPowerOrSpellFinishedByMe(CharacterActionMagicEffect action, BaseDefinition baseDefinition)
+        {
+            var warlock = action.ActingCharacter.RulesetCharacter;
+
+            foreach (var target in action.ActionParams.TargetCharacters
+                         .Select(x => x.RulesetCharacter)
+                         .Where(x => x != null && !protectors.HasNameFrom(x, warlock)))
+            {
+                protectors.AddName(target, warlock);
+            }
+
+            yield break;
+        }
+
+        public bool CanUsePower(RulesetCharacter character, FeatureDefinitionPower power)
+        {
+            return protectors.NamedBy(character).Count < GiftOfTheProtectors.MaxNames(character);
+        }
+    }
+
+    private sealed class PowerGiftOfTheProtectorsErase(GiftOfTheProtectors protectors)
+        : IValidatePowerUse, IFilterTargetingCharacter, IPowerOrSpellFinishedByMe
+    {
+        public bool EnforceFullSelection => false;
+
+        public bool IsValid(CursorLocationSelectTarget __instance, GameLocationCharacter target)
+        {
+            var warlock = __instance.ActionParams.ActingCharacter.RulesetCharacter;
+
+            if (protectors.HasNameFrom(target.RulesetCharacter, warlock))
+            {
+                return true;
+            }
+
+            __instance.actionModifier.FailureFlags.Add("Failure/&GiftOfTheProtectorsNotNamed");
+
+            return false;
+        }
+
+        public IEnumerator OnPowerOrSpellFinishedByMe(CharacterActionMagicEffect action, BaseDefinition baseDefinition)
+        {
+            var warlock = action.ActingCharacter.RulesetCharacter;
+
+            foreach (var target in action.ActionParams.TargetCharacters
+                         .Select(x => x.RulesetCharacter)
+                         .Where(x => x != null))
+            {
+                protectors.Erase(target, warlock.Guid);
+            }
+
+            yield break;
+        }
+
+        public bool CanUsePower(RulesetCharacter character, FeatureDefinitionPower power)
+        {
+            return protectors.NamedBy(character).Count > 0;
+        }
+    }
+
+    // a new name is protected unless the magic was already triggered since the warlock's last long rest
+    private sealed class OnConditionAddedOrRemovedGiftOfTheProtectorsName(GiftOfTheProtectors protectors)
+        : IOnConditionAddedOrRemoved
+    {
+        public void OnConditionAdded(RulesetCharacter target, RulesetCondition rulesetCondition)
+        {
+            if (!RulesetEntity.TryGetEntity<RulesetCharacter>(rulesetCondition.SourceGuid, out var warlock) ||
+                protectors.IsSpent(warlock))
+            {
+                return;
+            }
+
+            protectors.AddWard(target, warlock.Guid, warlock.CurrentFaction.Name);
+        }
+
+        public void OnConditionRemoved(RulesetCharacter target, RulesetCondition rulesetCondition)
+        {
+            // empty
+        }
+    }
+
+    // the game removes the ward when it keeps a creature at 1 HP: the magic is then spent for everyone
+    private sealed class OnConditionAddedOrRemovedGiftOfTheProtectorsWard(GiftOfTheProtectors protectors)
+        : IOnConditionAddedOrRemoved
+    {
+        public void OnConditionAdded(RulesetCharacter target, RulesetCondition rulesetCondition)
+        {
+            // empty
+        }
+
+        public void OnConditionRemoved(RulesetCharacter target, RulesetCondition rulesetCondition)
+        {
+            if (protectors.RemovingWards ||
+                target.IsDeadOrDying ||
+                target.CurrentHitPoints != 1 ||
+                !target.TryGetConditionOfCategoryAndType(
+                    AttributeDefinitions.TagEffect, protectors.ConditionName.Name, out var activeName) ||
+                activeName.SourceGuid != rulesetCondition.SourceGuid)
+            {
+                return;
+            }
+
+            if (RulesetEntity.TryGetEntity<RulesetCharacter>(rulesetCondition.SourceGuid, out var warlock))
+            {
+                protectors.Spend(warlock);
+            }
+            else
+            {
+                protectors.RemoveWardsFrom(rulesetCondition.SourceGuid);
+            }
+        }
+    }
+
+    // the magic comes back when the warlock finishes a long rest
+    private sealed class OnConditionAddedOrRemovedGiftOfTheProtectorsSpent(GiftOfTheProtectors protectors)
+        : IOnConditionAddedOrRemoved
+    {
+        public void OnConditionAdded(RulesetCharacter target, RulesetCondition rulesetCondition)
+        {
+            // empty
+        }
+
+        public void OnConditionRemoved(RulesetCharacter target, RulesetCondition rulesetCondition)
+        {
+            protectors.RestoreWardsFrom(target);
+        }
+    }
+
+    #endregion
+
+    #region Lessons of the First Ones
+
+    // the invocation is repeatable, so it is offered this many times, each copy unlocked by the previous one
+    private const int LessonsOfTheFirstOnesCopies = 4;
+
+    internal static List<InvocationDefinition> BuildLessonsOfTheFirstOnes()
+    {
+        const string NAME = "InvocationLessonsOfTheFirstOnes";
+
+        var invocationPool = CustomInvocationPoolDefinitionBuilder
+            .Create($"InvocationPool{NAME}")
+            .SetGuiPresentationNoContent(true)
+            .Setup(InvocationPoolTypeCustom.Pools.LessonsOfTheFirstOnes)
+            .AddToDB();
+
+        foreach (var feat in GetLessonsOfTheFirstOnesFeats())
+        {
+            _ = CustomInvocationDefinitionBuilder
+                .Create($"CustomInvocation{NAME}{feat.Name}")
+                .SetGuiPresentation(feat.GuiPresentation.Title, feat.GuiPresentation.Description)
+                .SetPoolType(InvocationPoolTypeCustom.Pools.LessonsOfTheFirstOnes)
+                .AddValidators(ValidateLessonsOfTheFirstOnesFeat)
+                .AddCustomSubFeatures(new LessonsOfTheFirstOnesFeat(feat), ModifyInvocationVisibility.Marker)
+                .AddToDB();
+        }
+
+        var invocations = new List<InvocationDefinition>();
+
+        for (var copy = 1; copy <= LessonsOfTheFirstOnesCopies; copy++)
+        {
+            var builder = InvocationDefinitionWithPrerequisitesBuilder
+                .Create(copy == 1 ? NAME : $"{NAME}{copy}")
+                .SetGuiPresentation(NAME, Category.Invocation, GetDefinition<InvocationDefinition>("BookAncientSecrets"))
+                .SetRequirements(2)
+                .SetGrantedFeature(invocationPool);
+
+            if (invocations.Count > 0)
+            {
+                var previous = invocations[invocations.Count - 1];
+
+                builder.SetValidators((_, hero) => ValidateHasPreviousLesson(hero, previous));
+            }
+
+            invocations.Add(builder.AddToDB());
+        }
+
+        return invocations;
+    }
+
+    // origin feats that need nothing else picked during level up, as the choice comes after the other stages
+    private static IEnumerable<FeatDefinition> GetLessonsOfTheFirstOnesFeats()
+    {
+        var featDb = DatabaseRepository.GetDatabase<FeatDefinition>();
+        var feats = new List<FeatDefinition>();
+
+        foreach (var name in GroupFeats.FeatGroupOrigin
+                     .GetFirstSubFeatureOfType<IGroupedFeat>()
+                     .GetSubFeats(true)
+                     .Select(x => x.Name)
+                     .Union(ArcanaUnleashedFeats.OriginFeatChoices))
+        {
+            if (featDb.TryGetElement(name, out var feat))
+            {
+                AddLeafFeats(feat, feats);
+            }
+        }
+
+        return feats
+            .Distinct()
+            .Where(x =>
+                !x.HasSubFeatureOfType<CustomInvocationPoolsByCharacterLevel>() &&
+                FlattenFeatures(x.Features).All(IsGrantedWithoutChoices))
+            .OrderBy(x => x.Name);
+
+        static void AddLeafFeats(FeatDefinition feat, List<FeatDefinition> leafFeats)
+        {
+            var group = feat.GetFirstSubFeatureOfType<IGroupedFeat>();
+
+            if (group == null)
+            {
+                leafFeats.Add(feat);
+
+                return;
+            }
+
+            foreach (var subFeat in group.GetSubFeats(true))
+            {
+                AddLeafFeats(subFeat, leafFeats);
+            }
+        }
+
+        static IEnumerable<FeatureDefinition> FlattenFeatures(IEnumerable<FeatureDefinition> features)
+        {
+            foreach (var feature in features)
+            {
+                yield return feature;
+
+                if (feature is not FeatureDefinitionFeatureSet featureSet)
+                {
+                    continue;
+                }
+
+                foreach (var subFeature in FlattenFeatures(featureSet.FeatureSet))
+                {
+                    yield return subFeature;
+                }
+            }
+        }
+
+        static bool IsGrantedWithoutChoices(FeatureDefinition feature)
+        {
+            return feature switch
+            {
+                FeatureDefinitionPointPool or FeatureDefinitionCustomInvocationPool => false,
+                FeatureDefinitionFeatureSet featureSet => featureSet.Mode == FeatureDefinitionFeatureSet.FeatureSetMode.Union,
+                _ => true
+            };
+        }
+    }
+
+    private static (bool, string) ValidateHasPreviousLesson(RulesetCharacterHero hero, InvocationDefinition previous)
+    {
+        var hasPrevious = hero.TrainedInvocations.Contains(previous)
+                          || hero.GetHeroBuildingData().LevelupTrainedInvocations.Any(x => x.Value.Contains(previous));
+
+        var guiFormat = Gui.Localize("Failure/&MustHaveLessonsOfTheFirstOnes");
+
+        return !hasPrevious ? (false, Gui.Colorize(guiFormat, Gui.ColorFailure)) : (true, guiFormat);
+    }
+
+    // each Lessons of the First Ones must be a different feat, and not one the hero already has
+    private static bool ValidateLessonsOfTheFirstOnesFeat(
+        RulesetCharacter character,
+        BaseDefinition definition,
+        out string requirement)
+    {
+        requirement = null;
+
+        if (character is not RulesetCharacterHero hero ||
+            definition.GetFirstSubFeatureOfType<LessonsOfTheFirstOnesFeat>() is not { } lesson)
+        {
+            return true;
+        }
+
+        var feat = lesson.Feat;
+        var knownFeats = hero.TrainedFeats
+            .Union(hero.GetHeroBuildingData().LevelupTrainedFeats
+                .SelectMany(x => x.Value)
+                .Where(x => !IsLessonFeatSelectedNow(hero, x)))
+            .ToList();
+        if (feat.GuiPresentation.Hidden)
+        {
+            requirement = Gui.Colorize(Gui.Localize("Failure/&LessonsOfTheFirstOnesFeatDisabled"), Gui.ColorFailure);
+
+            return false;
+        }
+
+        if (knownFeats.Contains(feat) ||
+            (feat.HasFamilyTag && knownFeats.Any(x => x.HasFamilyTag && x.FamilyTag == feat.FamilyTag)))
+        {
+            requirement = Gui.Colorize(Gui.Localize("Failure/&LessonsOfTheFirstOnesFeatKnown"), Gui.ColorFailure);
+
+            return false;
+        }
+
+        return true;
+    }
+
+    // feats this level up's Lessons of the First Ones picks put on the hero are not a reason to refuse them
+    private static bool IsLessonFeatSelectedNow(RulesetCharacterHero hero, FeatDefinition feat)
+    {
+        return hero.GetHeroBuildingData().LevelupTrainedInvocations
+            .SelectMany(x => x.Value)
+            .Any(x => x.GetFirstSubFeatureOfType<LessonsOfTheFirstOnesFeat>()?.Feat == feat);
+    }
+
+    internal sealed class LessonsOfTheFirstOnesFeat(FeatDefinition feat)
+    {
+        internal FeatDefinition Feat => feat;
+    }
+
+    #endregion
+
+    #region Witch Sight
+
+    // 2024 version: Truesight with a range of 30 feet, instead of See Invisibility and identifying magic items
+    internal static void UpdateWitchSight()
+    {
+        const string NAME = "InvocationWitchSight";
+
+        var senseTruesight = FeatureDefinitionSenseBuilder
+            .Create(FeatureDefinitionSenses.SenseTruesight16, $"Sense{NAME}Truesight")
+            .SetGuiPresentationNoContent(true)
+            .SetSense(SenseMode.Type.Truesight, 6, 6)
+            .AddToDB();
+
+        GetDefinition<FeatureDefinitionFeatureSet>("FeatureSetInvocationWitchSight").FeatureSet
+            .SetRange(senseTruesight);
+        GetDefinition<InvocationDefinition>("WitchSight").GuiPresentation.description =
+            $"Invocation/&{NAME}Description";
+    }
+
+    #endregion
 
     internal static InvocationDefinition BuildBondOfTheTalisman()
     {

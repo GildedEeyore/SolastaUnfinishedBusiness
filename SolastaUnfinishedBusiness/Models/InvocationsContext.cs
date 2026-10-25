@@ -19,6 +19,9 @@ internal static class InvocationsContext
     internal static HashSet<InvocationDefinition> Invocations { get; private set; } = [];
     internal static readonly HashSet<InvocationDefinition> DisabledInvocations = [];
 
+    // repeatable invocations offered more than once: extra copies follow the first copy's setting
+    private static readonly Dictionary<InvocationDefinition, List<InvocationDefinition>> InvocationCopies = [];
+
     internal static void LateLoad()
     {
         LoadInvocation(BuildBreathOfTheNight());
@@ -49,6 +52,7 @@ internal static class InvocationsContext
         LoadInvocation(ImprovedPactWeapon);
         LoadInvocation(BuildInexorableHex());
         LoadInvocation(BuildKinesis());
+        LoadRepeatableInvocation(BuildLessonsOfTheFirstOnes());
         LoadInvocation(BuildPerniciousCloak());
         LoadInvocation(BuildPoisonousBlast());
         LoadInvocation(BuildShroudOfShadow());
@@ -62,6 +66,8 @@ internal static class InvocationsContext
         LoadInvocation(BuildUndyingServitude());
         LoadInvocation(BuildVerdantArmor());
         LoadInvocation(BuildVexingHex());
+
+        UpdateWitchSight();
 
         // sorting
         Invocations = Invocations.OrderBy(x => x.FormatTitle()).ToHashSet();
@@ -84,10 +90,27 @@ internal static class InvocationsContext
         UpdateInvocationVisibility(invocationDefinition);
     }
 
-    private static void UpdateInvocationVisibility([NotNull] BaseDefinition invocationDefinition)
+    private static void LoadRepeatableInvocation([NotNull] List<InvocationDefinition> invocationDefinitions)
     {
-        invocationDefinition.GuiPresentation.hidden =
-            !Main.Settings.InvocationEnabled.Contains(invocationDefinition.Name);
+        InvocationCopies.Add(invocationDefinitions[0], invocationDefinitions.Skip(1).ToList());
+        LoadInvocation(invocationDefinitions[0]);
+    }
+
+    private static void UpdateInvocationVisibility([NotNull] InvocationDefinition invocationDefinition)
+    {
+        var hidden = !Main.Settings.InvocationEnabled.Contains(invocationDefinition.Name);
+
+        invocationDefinition.GuiPresentation.hidden = hidden;
+
+        if (!InvocationCopies.TryGetValue(invocationDefinition, out var copies))
+        {
+            return;
+        }
+
+        foreach (var copy in copies)
+        {
+            copy.GuiPresentation.hidden = hidden;
+        }
     }
 
     internal static void SwitchInvocation(InvocationDefinition invocationDefinition, bool active)

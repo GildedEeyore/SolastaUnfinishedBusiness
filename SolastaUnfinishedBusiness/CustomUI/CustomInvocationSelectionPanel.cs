@@ -7,6 +7,7 @@ using SolastaUnfinishedBusiness.Api.GameExtensions;
 using SolastaUnfinishedBusiness.Behaviors;
 using SolastaUnfinishedBusiness.Behaviors.Specific;
 using SolastaUnfinishedBusiness.Builders;
+using SolastaUnfinishedBusiness.Subclasses.Builders;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.UI;
@@ -302,6 +303,13 @@ internal class CustomInvocationSelectionPanel : CharacterStagePanel
 
                 command.UntrainCharacterFeature(hero, currentTag, custom.Name,
                     HeroDefinitions.PointsPoolType.Invocation);
+
+                //PATCH: support for Lessons of the First Ones granting a feat
+                if (custom.GetFirstSubFeatureOfType<InvocationsBuilders.LessonsOfTheFirstOnesFeat>() is { } lesson)
+                {
+                    command.UntrainCharacterFeature(hero, currentTag, lesson.Feat.Name,
+                        HeroDefinitions.PointsPoolType.Feat);
+                }
             }
         }
 
@@ -339,6 +347,14 @@ internal class CustomInvocationSelectionPanel : CharacterStagePanel
                 {
                     command.TrainCharacterFeature(hero, poolId.Tag, invocation.Name,
                         HeroDefinitions.PointsPoolType.Invocation);
+
+                    //PATCH: support for Lessons of the First Ones granting a feat
+                    if (invocation.GetFirstSubFeatureOfType<InvocationsBuilders.LessonsOfTheFirstOnesFeat>() is
+                        { } lesson)
+                    {
+                        command.TrainCharacterFeature(hero, poolId.Tag, lesson.Feat.Name,
+                            HeroDefinitions.PointsPoolType.Feat);
+                    }
                 }
             }
         }
@@ -550,6 +566,15 @@ internal class CustomInvocationSelectionPanel : CharacterStagePanel
 
         if (poolTag != null)
         {
+            //PATCH: supports pools granted by invocations learned on this level up (Lessons of the First Ones)
+            _gainedCustomFeatures.AddRange(heroBuildingData.LevelupTrainedInvocations
+                .SelectMany(x => x.Value)
+                .Where(x => x is not InvocationDefinitionCustom && x.GrantedFeature)
+                .SelectMany(x => RulesetActorExtensions.FlattenFeatureList([x.GrantedFeature]))
+                .OfType<FeatureDefinitionCustomInvocationPool>()
+                .Where(x => x.PoolType != null)
+                .Select(f => (poolTag, f)));
+
             _gainedCustomFeatures.AddRange(RulesetActorExtensions.FlattenFeatureList(_gainedClass.FeatureUnlocks
                     .Where(f => f.Level == _gainedClassLevel)
                     .Select(f => f.FeatureDefinition))
