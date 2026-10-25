@@ -88,6 +88,9 @@ internal static class CustomSituationalContext
             ExtraSituationalContext.AttackingWithSpell =>
                 IsAttackingWithSpell(contextParams),
 
+            ExtraSituationalContext.IsRangedAttack =>
+                contextParams.rangedAttack,
+
             ExtraSituationalContext.IsConditionSource =>
                 // this is required whenever condition is on target
                 IsConditionSource(contextParams.source, contextParams.condition, contextParams.target.guid) ||

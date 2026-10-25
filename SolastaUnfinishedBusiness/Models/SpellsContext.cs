@@ -351,6 +351,7 @@ internal static class SpellsContext
         RegisterSpell(AuraOfVitality, 0, SpellListCleric, SpellListPaladin);
         RegisterSpell(BlindingSmite, 0, SpellListPaladin);
         RegisterSpell(BuildBoomingStep(), 0, SpellListSorcerer, SpellListWarlock, SpellListWizard);
+        RegisterSpell(BuildCacophonicShield(), 0, SpellListBard, SpellListSorcerer, SpellListWizard);
         RegisterSpell(CorruptingBolt, 0, SpellListSorcerer, SpellListWarlock, SpellListWizard);
         RegisterSpell(BuildCrusadersMantle(), 0, SpellListPaladin);
         RegisterSpell(ElementalWeapon, 0, SpellListDruid, SpellListPaladin, SpellListRanger, spellListInventorClass);

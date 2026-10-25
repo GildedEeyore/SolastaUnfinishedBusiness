@@ -49,7 +49,9 @@ public static class RulesetEffectSpellPatcher
                 !IsPositionImmuneToSpell(targetPosition, source.LocationPosition, spellDefinition.SpellLevel,
                     out var spellLevel))
             {
-                return true;
+                //PATCH: support for `RecurrentEffectOncePerTurn` (Cacophonic Shield)
+                return !spellDefinition.HasSubFeatureOfType<RecurrentEffectOncePerTurn>() ||
+                       RecurrentEffectOncePerTurn.TryRegisterApplication(__instance, targetCharacter);
             }
 
             targetCharacter.ImmuneToSpellLevel?.Invoke(targetCharacter, spellDefinition, spellLevel);
