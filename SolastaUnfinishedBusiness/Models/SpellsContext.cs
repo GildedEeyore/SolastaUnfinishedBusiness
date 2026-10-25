@@ -359,6 +359,7 @@ internal static class SpellsContext
         RegisterSpell(PulseWave, 0, SpellListWizard);
         RegisterSpell(BuildFlameArrows(), 0, SpellListDruid, SpellListRanger, SpellListSorcerer, SpellListWizard,
             spellListInventorClass);
+        RegisterSpell(BuildLaeralsSilverLance(), 0, SpellListCleric, SpellListSorcerer, SpellListWizard);
         RegisterSpell(BuildLightningArrow(), 0, SpellListRanger);
         RegisterSpell(BuildIntellectFortress(), 0, SpellListBard, SpellListSorcerer, SpellListWarlock, SpellListWizard,
             spellListInventorClass);

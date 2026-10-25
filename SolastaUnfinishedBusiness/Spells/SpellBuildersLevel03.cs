@@ -1756,6 +1756,53 @@ internal static partial class SpellBuilders
 
     #endregion
 
+    #region Laeral's Silver Lance
+
+    internal static SpellDefinition BuildLaeralsSilverLance()
+    {
+        const string Name = "LaeralsSilverLance";
+
+        var spell = SpellDefinitionBuilder
+            .Create(Name)
+            .SetGuiPresentation(Category.Spell, LightningBolt)
+            .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolEvocation)
+            .SetSpellLevel(3)
+            .SetCastingTime(ActivationTime.Action)
+            // RAW requires a silver pin worth 250+ GP; no buyable item carries the Silver tag at that cost
+            .SetMaterialComponent(MaterialComponentType.Mundane)
+            .SetSomaticComponent(true)
+            .SetVerboseComponent(true)
+            .SetVocalSpellSameType(VocalSpellSemeType.Attack)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    // RAW the caster picks the creatures in the line; here only enemies are affected
+                    .SetTargetingData(Side.Enemy, RangeType.Self, 0, TargetType.Line, 24)
+                    .ExcludeCaster()
+                    .SetEffectAdvancement(EffectIncrementMethod.PerAdditionalSlotLevel, additionalDicePerIncrement: 1)
+                    .SetSavingThrowData(false, AttributeDefinitions.Strength, false,
+                        EffectDifficultyClassComputation.SpellCastingFeature)
+                    .SetParticleEffectParameters(LightningBolt)
+                    .SetImpactEffectParameters(EldritchBlast)
+                    .SetEffectForms(
+                        EffectFormBuilder
+                            .Create()
+                            .SetDamageForm(DamageTypeForce, 3, DieType.D10)
+                            .HasSavingThrow(EffectSavingThrowType.HalfDamage)
+                            .Build(),
+                        EffectFormBuilder
+                            .Create()
+                            .SetMotionForm(MotionForm.MotionType.FallProne)
+                            .HasSavingThrow(EffectSavingThrowType.Negates)
+                            .Build())
+                    .Build())
+            .AddToDB();
+
+        return spell;
+    }
+
+    #endregion
+
     #region Spirit Shroud
 
     private const string SpiritShroudName = "SpiritShroud";
