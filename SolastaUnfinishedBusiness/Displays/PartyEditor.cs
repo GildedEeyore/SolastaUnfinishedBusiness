@@ -1,5 +1,6 @@
 ﻿// Copyright < 2021 > Narria (github user Cabarius) - License: MIT
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using SolastaUnfinishedBusiness.Api.Helpers;
@@ -16,6 +17,8 @@ public static class PartyEditor
     private static int _selectedCharacterIndex;
     private static RulesetCharacter _selectedCharacter;
     private static (string, string) _nameEditState = (null, null);
+    private static (RulesetSpellRepertoire repertoire, SpellDefinition spell) _spellToReplace;
+    private static string _replacementSearchText = "";
 
 #if DEBUG
     private static ICharacterPoolService PoolService => ServiceRepository.GetService<ICharacterPoolService>();
@@ -100,6 +103,7 @@ public static class PartyEditor
                         OnDetailToggle(ToggleChoice.Skills, ch);
                         OnDetailToggle(ToggleChoice.Feats, ch);
                         OnDetailToggle(ToggleChoice.Invocations, ch);
+                        OnDetailToggle(ToggleChoice.Spells, ch);
                     }
 
                     if (ch == _selectedCharacter && _selectedToggle == ToggleChoice.Stats)
@@ -149,6 +153,12 @@ public static class PartyEditor
                                 Label($"{modifiersString}");
                             }
                         }
+                    }
+
+                    if (ch == _selectedCharacter && _selectedToggle == ToggleChoice.Spells)
+                    {
+                        Div(100, 20, 755);
+                        changed |= SpellsOnGUI(hero);
                     }
 
                     if (ch == _selectedCharacter && BlueprintLoader.Shared.LoadInProgress())
@@ -410,6 +420,266 @@ public static class PartyEditor
         }
     }
 
+    // replaces known cantrips and spells chosen by selection, keeping each one on its own repertoire's spell list
+    private static bool SpellsOnGUI(RulesetCharacterHero hero)
+    {
+        var changed = false;
+        var repertoires = hero.SpellRepertoires
+            .Where(r => r.SpellCastingFeature &&
+                        (CanReplaceCantrips(r) && r.KnownCantrips.Count > 0 ||
+                         CanReplaceSpells(r) && r.KnownSpells.Count > 0))
+            .ToList();
+
+        if (repertoires.Count == 0)
+        {
+            using (HorizontalScope())
+            {
+                Space(100);
+                Label("No known cantrips or spells to replace".Yellow());
+            }
+
+            return false;
+        }
+
+        foreach (var repertoire in repertoires)
+        {
+            using (HorizontalScope())
+            {
+                Space(100);
+                Label(GetRepertoireTitle(repertoire).Cyan().Bold(), Width(400f));
+
+                if (CanReplaceSpells(repertoire))
+                {
+                    Label("Max spell level: ".Green() + $"{repertoire.MaxSpellLevelOfSpellCastingLevel}".Orange());
+                }
+            }
+
+            var known = new List<SpellDefinition>();
+
+            if (CanReplaceCantrips(repertoire))
+            {
+                known.AddRange(repertoire.KnownCantrips);
+            }
+
+            if (CanReplaceSpells(repertoire))
+            {
+                known.AddRange(repertoire.KnownSpells);
+            }
+
+            foreach (var spell in known.Where(s => s).ToList())
+            {
+                var isSelected = _spellToReplace.repertoire == repertoire && _spellToReplace.spell == spell;
+
+                using (HorizontalScope())
+                {
+                    Space(125);
+                    Label(FormatSpellLevel(spell), Width(100f));
+                    Label(isSelected ? spell.FormatTitle().Orange().Bold() : spell.FormatTitle(), Width(300f));
+                    ActionButton(isSelected ? "Cancel" : "Replace", () =>
+                    {
+                        _spellToReplace = isSelected ? (null, null) : (repertoire, spell);
+                        _replacementSearchText = "";
+                    }, AutoWidth());
+                }
+
+                if (isSelected)
+                {
+                    changed |= ReplacementOnGUI(hero, repertoire, spell);
+                }
+            }
+
+            Space(10);
+        }
+
+        return changed;
+    }
+
+    private static bool ReplacementOnGUI(
+        RulesetCharacterHero hero, RulesetSpellRepertoire repertoire, SpellDefinition spell)
+    {
+        var changed = false;
+
+        using (HorizontalScope())
+        {
+            Space(150);
+            Label("Replace with:".Green(), Width(150f));
+            ActionTextField(ref _replacementSearchText, "replacementSearchText", null, null, Width(320));
+        }
+
+        var candidates = GetReplacementCandidates(hero, repertoire, spell)
+            .Where(s => _replacementSearchText.Length == 0 ||
+                        s.FormatTitle().IndexOf(_replacementSearchText, StringComparison.OrdinalIgnoreCase) >= 0)
+            .ToList();
+
+        if (candidates.Count == 0)
+        {
+            using (HorizontalScope())
+            {
+                Space(150);
+                Label("No other spells available".Yellow());
+            }
+        }
+
+        foreach (var candidate in candidates)
+        {
+            using (HorizontalScope())
+            {
+                Space(150);
+                Label(FormatSpellLevel(candidate), Width(100f));
+                Label(candidate.FormatTitle(), Width(300f));
+                ActionButton("Choose", () =>
+                {
+                    ReplaceSpell(repertoire, spell, candidate);
+                    _spellToReplace = (null, null);
+                    _replacementSearchText = "";
+                    changed = true;
+                }, AutoWidth());
+            }
+        }
+
+        return changed;
+    }
+
+    // wizard spellbooks, prepared casters and fixed lists have no chosen spells known other than cantrips
+    private static bool CanReplaceSpells(RulesetSpellRepertoire repertoire)
+    {
+        return repertoire.SpellCastingFeature.SpellKnowledge == RuleDefinitions.SpellKnowledge.Selection;
+    }
+
+    private static bool CanReplaceCantrips(RulesetSpellRepertoire repertoire)
+    {
+        return repertoire.SpellCastingFeature.SpellKnowledge != RuleDefinitions.SpellKnowledge.FixedList;
+    }
+
+    private static string FormatSpellLevel(SpellDefinition spell)
+    {
+        return spell.SpellLevel == 0 ? "Cantrip" : $"Level {spell.SpellLevel}";
+    }
+
+    private static string GetRepertoireTitle(RulesetSpellRepertoire repertoire)
+    {
+        if (repertoire.SpellCastingClass)
+        {
+            return repertoire.SpellCastingClass.FormatTitle();
+        }
+
+        if (repertoire.SpellCastingSubclass)
+        {
+            return repertoire.SpellCastingSubclass.FormatTitle();
+        }
+
+        return repertoire.SpellCastingRace
+            ? repertoire.SpellCastingRace.FormatTitle()
+            : repertoire.SpellCastingFeature.FormatTitle();
+    }
+
+    private static List<SpellDefinition> GetReplacementCandidates(
+        RulesetCharacterHero hero, RulesetSpellRepertoire repertoire, SpellDefinition spell)
+    {
+        var isCantrip = spell.SpellLevel == 0;
+        var maxSpellLevel = Math.Max(repertoire.MaxSpellLevelOfSpellCastingLevel, spell.SpellLevel);
+        var spellLists = new List<SpellListDefinition> { repertoire.SpellCastingFeature.SpellListDefinition };
+
+        spellLists.AddRange(GetExtendedSpellLists(hero, repertoire));
+
+        return spellLists
+            .Where(spellList => spellList)
+            .SelectMany(spellList => spellList.SpellsByLevel)
+            .SelectMany(spellsByLevel => spellsByLevel.Spells)
+            .Where(s => s &&
+                        (isCantrip ? s.SpellLevel == 0 : s.SpellLevel > 0 && s.SpellLevel <= maxSpellLevel) &&
+                        !IsSpellOnRepertoire(repertoire, s))
+            .Distinct()
+            .OrderBy(s => s.SpellLevel)
+            .ThenBy(s => s.FormatTitle())
+            .ToList();
+    }
+
+    private static bool IsSpellOnRepertoire(RulesetSpellRepertoire repertoire, SpellDefinition spell)
+    {
+        return repertoire.KnownCantrips.Contains(spell) ||
+               repertoire.KnownSpells.Contains(spell) ||
+               repertoire.AutoPreparedSpells.Contains(spell) ||
+               repertoire.ExtraSpellsByTag.Values.Any(spells => spells.Contains(spell));
+    }
+
+    // patron and other expanded spell lists granted by the class or subclass that owns this repertoire
+    private static IEnumerable<SpellListDefinition> GetExtendedSpellLists(
+        RulesetCharacterHero hero, RulesetSpellRepertoire repertoire)
+    {
+        var characterClass = repertoire.SpellCastingClass;
+
+        if (!characterClass && repertoire.SpellCastingSubclass)
+        {
+            characterClass = hero.ClassesAndSubclasses
+                .FirstOrDefault(x => x.Value == repertoire.SpellCastingSubclass).Key;
+        }
+
+        if (!characterClass || !hero.ClassesAndLevels.TryGetValue(characterClass, out var classLevel))
+        {
+            return [];
+        }
+
+        hero.ClassesAndSubclasses.TryGetValue(characterClass, out var subclass);
+
+        var features = new List<FeatureDefinition>();
+
+        for (var level = 1; level <= classLevel; level++)
+        {
+            if (hero.ActiveFeatures.TryGetValue(AttributeDefinitions.GetClassTag(characterClass, level),
+                    out var classFeatures))
+            {
+                features.AddRange(classFeatures);
+            }
+
+            if (subclass &&
+                hero.ActiveFeatures.TryGetValue(AttributeDefinitions.GetSubclassTag(characterClass, level, subclass),
+                    out var subclassFeatures))
+            {
+                features.AddRange(subclassFeatures);
+            }
+        }
+
+        return GetExtendedSpellLists(features);
+    }
+
+    private static IEnumerable<SpellListDefinition> GetExtendedSpellLists(IEnumerable<FeatureDefinition> features)
+    {
+        foreach (var feature in features)
+        {
+            switch (feature)
+            {
+                case FeatureDefinitionMagicAffinity magicAffinity when magicAffinity.ExtendedSpellList:
+                    yield return magicAffinity.ExtendedSpellList;
+                    break;
+                case FeatureDefinitionFeatureSet { uniqueChoices: false } featureSet:
+                    foreach (var spellList in GetExtendedSpellLists(featureSet.FeatureSet))
+                    {
+                        yield return spellList;
+                    }
+
+                    break;
+            }
+        }
+    }
+
+    private static void ReplaceSpell(
+        RulesetSpellRepertoire repertoire, SpellDefinition oldSpell, SpellDefinition newSpell)
+    {
+        var spells = oldSpell.SpellLevel == 0 ? repertoire.KnownCantrips : repertoire.KnownSpells;
+        var index = spells.IndexOf(oldSpell);
+
+        if (index < 0)
+        {
+            return;
+        }
+
+        spells[index] = newSpell;
+        spells.Sort(repertoire);
+        repertoire.PreparedSpells.Remove(oldSpell);
+        repertoire.RepertoireRefreshed?.Invoke(repertoire);
+    }
+
     private static void OnDetailToggle(ToggleChoice choice, RulesetCharacter ch)
     {
         var show = ch == _selectedCharacter && _selectedToggle == choice;
@@ -418,6 +688,9 @@ public static class PartyEditor
         {
             return;
         }
+
+        _spellToReplace = (null, null);
+        _replacementSearchText = "";
 
         if (show)
         {
@@ -500,8 +773,8 @@ public static class PartyEditor
         Skills,
         Feats,
         Invocations,
+        Spells,
 
-        // Spells,
         // Classes,
         Stats,
         None
