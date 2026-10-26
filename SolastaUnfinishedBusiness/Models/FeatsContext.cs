@@ -47,6 +47,12 @@ internal static class FeatsContext
             Main.Settings.FeatEnabled.TryAdd("FeatGroupFeyTouched");
         }
 
+        // War Caster became a group with an ability choice so keep it enabled for settings that had the old feat
+        if (Main.Settings.FeatEnabled.Remove(OtherFeats.FeatWarCaster))
+        {
+            Main.Settings.FeatEnabled.TryAdd(OtherFeats.FeatGroupWarCaster);
+        }
+
         // generate feats here and fill the list
         ArcanaUnleashedFeats.CreateFeats(feats);
         ArmorFeats.CreateFeats(feats);

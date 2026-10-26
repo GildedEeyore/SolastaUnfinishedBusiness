@@ -150,7 +150,7 @@ internal static class InventorClass
                 ToolTypeDefinitions.ScrollKitType)
             //TODO: Add more preferred feats
             .AddFeatPreferences(
-                OtherFeats.FeatWarCaster,
+                OtherFeats.FeatWarCasterInt,
                 "PowerfulCantrip",
                 "FlawlessConcentration")
 

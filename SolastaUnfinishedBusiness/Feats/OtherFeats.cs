@@ -42,6 +42,8 @@ internal static class OtherFeats
     private const string MagicAffinityFeatWarCaster = "MagicAffinityFeatWarCaster";
     internal const string FeatEldritchAdept = "FeatEldritchAdept";
     internal const string FeatWarCaster = "FeatWarCaster";
+    internal const string FeatWarCasterInt = "FeatWarCasterInt";
+    internal const string FeatGroupWarCaster = "FeatGroupWarCaster";
     internal const string FeatMagicInitiateTag = "Initiate";
     internal const string FeatSpellSniperTag = "Sniper";
 
@@ -69,7 +71,6 @@ internal static class OtherFeats
         var featPickPocket = BuildPickPocket();
         var featTough = BuildTough();
         var featVersatilityAdept = EldritchVersatilityBuilders.FeatEldritchVersatilityAdept;
-        var featWarCaster = BuildWarcaster();
 
         var athleteGroup = BuildAthlete(feats);
         var balefulScionGroup = BuildBalefulScion(feats);
@@ -80,6 +81,7 @@ internal static class OtherFeats
         var giftOfTheGemDragonGroup = BuildGiftOfTheGemDragon(feats);
         var weaponMasterGroup = BuildWeaponMaster(feats);
         var weaponMasteryGroup = BuildWeaponMastery(feats);
+        var warCasterGroup = BuildWarcaster(feats);
 
         var featMerciless = BuildMerciless();
         var featPolearmExpert = BuildPolearmExpert();
@@ -117,8 +119,7 @@ internal static class OtherFeats
             featShieldExpert,
             FeatStealthy,
             featTough,
-            featVersatilityAdept,
-            featWarCaster);
+            featVersatilityAdept);
 
         GroupFeats.FeatGroupBodyResilience.AddFeats(
             athleteGroup,
@@ -148,8 +149,8 @@ internal static class OtherFeats
             balefulScionGroup,
             elementalAdeptGroup,
             elementalMasterGroup,
-            featWarCaster,
-            spellSniperGroup);
+            spellSniperGroup,
+            warCasterGroup);
 
         GroupFeats.FeatGroupSupportCombat.AddFeats(
             featGiftOfTheChromaticDragon,
@@ -3286,23 +3287,53 @@ internal static class OtherFeats
 
     #region War Caster
 
-    private static FeatDefinition BuildWarcaster()
+    private static FeatDefinition BuildWarcaster([NotNull] List<FeatDefinition> feats)
     {
-        return FeatDefinitionBuilder
+        var magicAffinityWarCaster = FeatureDefinitionMagicAffinityBuilder
+            .Create(MagicAffinityFeatWarCaster)
+            .SetGuiPresentation(FeatWarCaster, Category.Feat)
+            .SetCastingModifiers(0, SpellParamsModifierType.FlatValue, 0,
+                SpellParamsModifierType.None)
+            .SetConcentrationModifiers(ConcentrationAffinity.Advantage)
+            .SetHandsFullCastingModifiers(true, true, true)
+            .AddToDB();
+
+        // keeps the old feat in the database, hidden, so heroes that already took it still load
+        _ = FeatDefinitionBuilder
             .Create(FeatWarCaster)
-            .SetGuiPresentation(Category.Feat)
-            .SetFeatures(
-                FeatureDefinitionMagicAffinityBuilder
-                    .Create(MagicAffinityFeatWarCaster)
-                    .SetGuiPresentation(FeatWarCaster, Category.Feat)
-                    .SetCastingModifiers(0, SpellParamsModifierType.FlatValue, 0,
-                        SpellParamsModifierType.None)
-                    .SetConcentrationModifiers(ConcentrationAffinity.Advantage)
-                    .SetHandsFullCastingModifiers(true, true, true)
-                    .AddToDB())
+            .SetGuiPresentation(Category.Feat, hidden: true)
+            .SetFeatures(magicAffinityWarCaster)
             .SetMustCastSpellsPrerequisite()
+            .SetFeatFamily(FeatWarCaster)
             .AddCustomSubFeatures(WarCasterMarker.Mark)
             .AddToDB();
+
+        // 2024 rules add +1 to Intelligence, Wisdom or Charisma
+        var attributeIncreases = new List<(FeatureDefinition, string)>
+        {
+            (AttributeModifierCreed_Of_Pakri, "Int"),
+            (AttributeModifierCreed_Of_Maraike, "Wis"),
+            (AttributeModifierCreed_Of_Solasta, "Cha")
+        };
+
+        var warCasterFeats = attributeIncreases
+            .Select(x => FeatDefinitionBuilder
+                .Create($"{FeatWarCaster}{x.Item2}")
+                .SetGuiPresentation(Category.Feat)
+                .SetFeatures(x.Item1, magicAffinityWarCaster)
+                .SetMustCastSpellsPrerequisite()
+                .SetFeatFamily(FeatWarCaster)
+                .AddCustomSubFeatures(WarCasterMarker.Mark)
+                .AddToDB())
+            .ToArray();
+
+        feats.AddRange(warCasterFeats);
+
+        var warCasterGroup = GroupFeats.MakeGroup(FeatGroupWarCaster, FeatWarCaster, warCasterFeats);
+
+        warCasterGroup.mustCastSpellsPrerequisite = !Main.Settings.DisableCastSpellPreRequisitesOnModFeats;
+
+        return warCasterGroup;
     }
 
     internal class WarCasterMarker
