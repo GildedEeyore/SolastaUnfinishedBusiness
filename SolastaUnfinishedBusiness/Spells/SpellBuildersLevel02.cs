@@ -1733,4 +1733,94 @@ internal static partial class SpellBuilders
     }
 
     #endregion
+
+    #region Searing Orb
+
+    internal static SpellDefinition BuildSearingOrb()
+    {
+        const string NAME = "SearingOrb";
+
+        var powerExplosion = FeatureDefinitionPowerBuilder
+            .Create($"Power{NAME}")
+            .SetGuiPresentation(NAME, Category.Spell, hidden: true)
+            .SetUsesFixed(ActivationTime.NoCost)
+            .SetShowCasting(false)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    // until the end of each creature's next turn
+                    .SetDurationData(DurationType.Round, 1)
+                    .SetTargetingData(Side.All, RangeType.Distance, 12, TargetType.IndividualsUnique)
+                    .SetSavingThrowData(false, AttributeDefinitions.Constitution, false,
+                        EffectDifficultyClassComputation.SpellCastingFeature)
+                    .SetEffectForms(
+                        EffectFormBuilder
+                            .Create()
+                            .HasSavingThrow(EffectSavingThrowType.Negates)
+                            .SetConditionForm(
+                                ConditionDefinitions.ConditionBlinded, ConditionForm.ConditionOperation.Add)
+                            .Build())
+                    .SetImpactEffectParameters(Sunburst)
+                    .SetConditionEffectParameters(ConditionDefinitions.ConditionBlinded)
+                    .Build())
+            .AddToDB();
+
+        var spell = SpellDefinitionBuilder
+            .Create(NAME)
+            .SetGuiPresentation(Category.Spell, Sprites.GetSprite(NAME, Resources.SearingOrb, 128))
+            .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolEvocation)
+            .SetSpellLevel(2)
+            .SetCastingTime(ActivationTime.Action)
+            // RAW metallic flakes and a pinch of phosphorus, covered by a pouch or focus
+            .SetMaterialComponent(MaterialComponentType.Mundane)
+            .SetSomaticComponent(true)
+            .SetVerboseComponent(false)
+            .SetVocalSpellSameType(VocalSpellSemeType.Attack)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetTargetingData(Side.Enemy, RangeType.RangeHit, 12, TargetType.IndividualsUnique)
+                    .SetEffectAdvancement(EffectIncrementMethod.PerAdditionalSlotLevel, additionalDicePerIncrement: 1)
+                    .SetEffectForms(EffectFormBuilder.DamageForm(DamageTypeRadiant, 3, DieType.D4))
+                    .SetParticleEffectParameters(GuidingBolt)
+                    .Build())
+            .AddCustomSubFeatures(new PowerOrSpellFinishedByMeSearingOrb(powerExplosion))
+            .AddToDB();
+
+        return spell;
+    }
+
+    // hit or miss, the orb explodes: the target and each creature within 10 feet of it save or are blinded
+    private sealed class PowerOrSpellFinishedByMeSearingOrb(FeatureDefinitionPower powerExplosion)
+        : IPowerOrSpellFinishedByMe
+    {
+        public IEnumerator OnPowerOrSpellFinishedByMe(CharacterActionMagicEffect action, BaseDefinition baseDefinition)
+        {
+            if (action.Countered || action.ExecutionFailed || action.ActionParams.TargetCharacters.Count == 0)
+            {
+                yield break;
+            }
+
+            var caster = action.ActingCharacter;
+            var target = action.ActionParams.TargetCharacters[0];
+            var locationCharacterService = ServiceRepository.GetService<IGameLocationCharacterService>();
+            var targets = locationCharacterService.PartyCharacters
+                .Union(locationCharacterService.GuestCharacters)
+                .Where(x =>
+                    x.RulesetCharacter is { IsDeadOrDyingOrUnconscious: false } &&
+                    (x == target || x.IsWithinRange(target, 2)))
+                .ToArray();
+
+            if (targets.Length == 0)
+            {
+                yield break;
+            }
+
+            var usablePower = PowerProvider.Get(powerExplosion, caster.RulesetCharacter);
+
+            caster.MyExecuteActionSpendPower(usablePower, targets);
+        }
+    }
+
+    #endregion
 }

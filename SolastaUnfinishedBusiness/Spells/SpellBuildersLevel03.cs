@@ -2415,4 +2415,167 @@ internal static partial class SpellBuilders
     }
 
     #endregion
+
+    #region Sylune's Viper
+
+    internal static SpellDefinition BuildSylunesViper()
+    {
+        const string NAME = "SylunesViper";
+        const int TempHitPoints = 15;
+        const int TempHitPointsPerSlotLevel = 5;
+
+        var sprite = Sprites.GetSprite(NAME, Resources.SylunesViper, 128);
+
+        var conditionPoisoned = ConditionDefinitionBuilder
+            .Create(ConditionDefinitions.ConditionPoisoned, $"Condition{NAME}Poisoned")
+            .SetParentCondition(ConditionDefinitions.ConditionPoisoned)
+            .SetConditionType(ConditionType.Detrimental)
+            .SetSpecialDuration(DurationType.Round, 1, (TurnOccurenceType)ExtraTurnOccurenceType.StartOfSourceTurn)
+            .AddToDB();
+
+        // while poisoned by the bite, the target is also incapacitated
+        var conditionIncapacitated = ConditionDefinitionBuilder
+            .Create(ConditionDefinitions.ConditionIncapacitated, $"Condition{NAME}Incapacitated")
+            .SetParentCondition(ConditionDefinitions.ConditionIncapacitated)
+            .SetConditionType(ConditionType.Detrimental)
+            .SetSpecialDuration(DurationType.Round, 1, (TurnOccurenceType)ExtraTurnOccurenceType.StartOfSourceTurn)
+            .AddToDB();
+
+        var powerVenomousBite = FeatureDefinitionPowerBuilder
+            .Create($"Power{NAME}VenomousBite")
+            .SetGuiPresentation(Category.Feature, sprite)
+            .SetUsesFixed(ActivationTime.Action)
+            .SetUseSpellAttack()
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetTargetingData(Side.Enemy, RangeType.RangeHit, 10, TargetType.IndividualsUnique)
+                    .SetEffectForms(
+                        EffectFormBuilder.DamageForm(DamageTypeForce, 1, DieType.D6),
+                        EffectFormBuilder.ConditionForm(conditionPoisoned),
+                        EffectFormBuilder.ConditionForm(conditionIncapacitated))
+                    .SetParticleEffectParameters(PoisonSpray)
+                    .SetImpactEffectParameters(PoisonSpray)
+                    .Build())
+            .AddToDB();
+
+        var movementAffinityClimb = FeatureDefinitionMovementAffinityBuilder
+            .Create($"MovementAffinity{NAME}")
+            .SetGuiPresentationNoContent(true)
+            // a climb speed equal to your speed: climbing costs no extra movement
+            .SetClimbing(true, true)
+            .AddToDB();
+
+        var condition = ConditionDefinitionBuilder
+            .Create($"Condition{NAME}")
+            .SetGuiPresentation(NAME, Category.Spell, ConditionDefinitions.ConditionProtectedFromPoison)
+            .SetPossessive()
+            .SetConditionType(ConditionType.Beneficial)
+            .SetFeatures(movementAffinityClimb, powerVenomousBite)
+            .AddCustomSubFeatures(AddUsablePowersFromCondition.Marker)
+            .AddToDB();
+
+        condition.GuiPresentation.description = Gui.EmptyContent;
+        condition.AddCustomSubFeatures(new CustomBehaviorSylunesViper(condition));
+        powerVenomousBite.AddCustomSubFeatures(new ModifyEffectDescriptionSylunesViper(condition));
+
+        var spell = SpellDefinitionBuilder
+            .Create(NAME)
+            .SetGuiPresentation(Category.Spell, sprite)
+            .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolConjuration)
+            .SetSpellLevel(3)
+            .SetCastingTime(ActivationTime.BonusAction)
+            // RAW a snake fang, covered by a pouch or focus
+            .SetMaterialComponent(MaterialComponentType.Mundane)
+            .SetSomaticComponent(true)
+            .SetVerboseComponent(true)
+            .SetVocalSpellSameType(VocalSpellSemeType.Buff)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetDurationData(DurationType.Hour, 1)
+                    .SetTargetingData(Side.Ally, RangeType.Self, 0, TargetType.Self)
+                    .SetEffectAdvancement(EffectIncrementMethod.PerAdditionalSlotLevel,
+                        additionalTempHpPerIncrement: TempHitPointsPerSlotLevel)
+                    .SetEffectForms(
+                        EffectFormBuilder
+                            .Create()
+                            .SetTempHpForm(TempHitPoints)
+                            .Build(),
+                        EffectFormBuilder.ConditionForm(condition))
+                    .SetParticleEffectParameters(FalseLife)
+                    .Build())
+            .AddToDB();
+
+        return spell;
+    }
+
+    // Venomous Bite deals 1d6 more force damage for each slot level above 3rd
+    private sealed class ModifyEffectDescriptionSylunesViper(ConditionDefinition conditionSylunesViper)
+        : IModifyEffectDescription
+    {
+        public bool IsValid(BaseDefinition definition, RulesetCharacter character, EffectDescription effectDescription)
+        {
+            return character.TryGetConditionOfCategoryAndType(
+                AttributeDefinitions.TagEffect, conditionSylunesViper.Name, out _);
+        }
+
+        public EffectDescription GetEffectDescription(
+            BaseDefinition definition,
+            EffectDescription effectDescription,
+            RulesetCharacter character,
+            RulesetEffect rulesetEffect)
+        {
+            if (character.TryGetConditionOfCategoryAndType(
+                    AttributeDefinitions.TagEffect, conditionSylunesViper.Name, out var activeCondition))
+            {
+                effectDescription.FindFirstDamageForm().DiceNumber =
+                    1 + System.Math.Max(0, activeCondition.EffectLevel - 3);
+            }
+
+            return effectDescription;
+        }
+    }
+
+    // the spell ends early once the caster has no temporary hit points left
+    private sealed class CustomBehaviorSylunesViper(ConditionDefinition conditionSylunesViper)
+        : IMagicEffectFinishedOnMe, IPhysicalAttackFinishedOnMe
+    {
+        public IEnumerator OnMagicEffectFinishedOnMe(
+            CharacterAction action,
+            GameLocationCharacter attacker,
+            GameLocationCharacter defender,
+            List<GameLocationCharacter> targets)
+        {
+            EndIfNoTemporaryHitPoints(defender.RulesetCharacter);
+
+            yield break;
+        }
+
+        public IEnumerator OnPhysicalAttackFinishedOnMe(
+            GameLocationBattleManager battleManager,
+            CharacterAction action,
+            GameLocationCharacter attacker,
+            GameLocationCharacter defender,
+            RulesetAttackMode attackMode,
+            RollOutcome rollOutcome,
+            int damageAmount)
+        {
+            EndIfNoTemporaryHitPoints(defender.RulesetCharacter);
+
+            yield break;
+        }
+
+        private void EndIfNoTemporaryHitPoints(RulesetCharacter rulesetCharacter)
+        {
+            if (rulesetCharacter.TemporaryHitPoints == 0 &&
+                rulesetCharacter.TryGetConditionOfCategoryAndType(
+                    AttributeDefinitions.TagEffect, conditionSylunesViper.Name, out var activeCondition))
+            {
+                rulesetCharacter.RemoveCondition(activeCondition);
+            }
+        }
+    }
+
+    #endregion
 }

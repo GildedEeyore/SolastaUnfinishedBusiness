@@ -338,6 +338,7 @@ internal static class SpellsContext
         RegisterSpell(PetalStorm, 0, SpellListDruid);
         RegisterSpell(BuildProtectThreshold(), 0, SpellListCleric, SpellListDruid, SpellListPaladin);
         RegisterSpell(PsychicWhip, 0, SpellListSorcerer, SpellListWizard);
+        RegisterSpell(BuildSearingOrb(), 0, SpellListCleric, SpellListPaladin);
         RegisterSpell(MirrorImage, 0, SpellListBard, SpellListSorcerer, SpellListWarlock, SpellListWizard);
         RegisterSpell(BuildShadowBlade(), 0, SpellListSorcerer, SpellListWarlock, SpellListWizard);
         RegisterSpell(BuildSnillocSnowballStorm(), 0, SpellListSorcerer, SpellListWizard);
@@ -365,6 +366,7 @@ internal static class SpellsContext
             spellListInventorClass);
         RegisterSpell(SpiritShroud, 0, SpellListCleric, SpellListPaladin, SpellListWarlock, SpellListWizard);
         RegisterSpell(BuildSummonUndead(), 0, SpellListWarlock, SpellListWizard);
+        RegisterSpell(BuildSylunesViper(), 0, SpellListDruid, SpellListWizard);
         RegisterSpell(BuildVitalityTransfer(), 0, SpellListCleric, SpellListWizard);
         RegisterSpell(BuildWinterBreath(), 0, SpellListDruid, SpellListSorcerer, SpellListWizard);
 
@@ -393,20 +395,26 @@ internal static class SpellsContext
         RegisterSpell(BanishingSmite, 0, SpellListPaladin);
         RegisterSpell(BuildCircleOfMagicalNegation(), 0, SpellListPaladin);
         RegisterSpell(BuildDawn(), 0, SpellListCleric, SpellListWizard);
+        RegisterSpell(BuildDestructiveWave(), 0, SpellListPaladin);
         RegisterSpell(DivineWrath, 0, SpellListPaladin);
         RegisterSpell(BuildEmpoweredKnowledge(), 0, SpellListBard, SpellListSorcerer, SpellListWizard,
             spellListInventorClass);
         RegisterSpell(FarStep, 0, SpellListSorcerer, SpellListWarlock, SpellListWizard);
+        RegisterSpell(BuildGraveGround(), 0, SpellListCleric, SpellListWarlock, SpellListWizard);
         RegisterSpell(BuildHolyWeapon(), 0, SpellListCleric, SpellListPaladin);
         RegisterSpell(BuildIncineration(), 0, SpellListSorcerer, SpellListWizard);
         RegisterSpell(MantleOfThorns, 0, SpellListDruid);
         RegisterSpell(BuildNegativeEnergyFlood(), 0, SpellListWarlock, SpellListWizard);
         RegisterSpell(SteelWhirlwind, 0, SpellListRanger, SpellListWizard);
         RegisterSpell(SonicBoom, 0, SpellListSorcerer, SpellListWizard);
+        RegisterSpell(BuildSongalsElementalSuffusion(), 0, SpellListDruid, SpellListSorcerer, SpellListWizard);
+        RegisterSpell(BuildSpiritLantern(), 0, SpellListCleric, SpellListWarlock, SpellListWizard,
+            spellListInventorClass);
         RegisterSpell(BuildSwiftQuiver(), 0, SpellListRanger);
         RegisterSpell(BuildSynapticStatic(), 0, SpellListBard, SpellListSorcerer, SpellListWarlock, SpellListWizard);
         RegisterSpell(Telekinesis, 0, SpellListSorcerer, SpellListWizard);
         RegisterSpell(BuildWallOfForce(), 0, SpellListWizard);
+        RegisterSpell(BuildYolandesRegalPresence(), 0, SpellListBard, SpellListWizard);
 
         // 6th level
         RegisterSpell(BuildFlashFreeze(), 0, SpellListDruid, SpellListSorcerer, SpellListWarlock);

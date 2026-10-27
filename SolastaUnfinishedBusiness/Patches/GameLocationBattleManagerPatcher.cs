@@ -741,6 +741,9 @@ public static class GameLocationBattleManagerPatcher
             //PATCH: Support Grave Domain Keeper of Souls, which triggers when any enemy dies
             yield return DomainGrave.HandleKeeperOfSouls(__instance, downedCreature);
 
+            //PATCH: Support Spirit Lantern spell, which gains a soul fragment when any enemy dies in its light
+            SpellBuilders.HandleSpiritLanternFragment(__instance, downedCreature);
+
             //PATCH: Support for `IOnReducedToZeroHpByMe` feature
             foreach (var onReducedToZeroHpByMe in
                      attacker.RulesetActor.GetSubFeaturesByType<IOnReducedToZeroHpByMe>())

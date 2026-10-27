@@ -1710,4 +1710,629 @@ internal static partial class SpellBuilders
     }
 
     #endregion
+
+    #region Grave Ground
+
+    internal static SpellDefinition BuildGraveGround()
+    {
+        const string NAME = "GraveGround";
+
+        var conditionGraveGround = ConditionDefinitionBuilder
+            .Create($"Condition{NAME}")
+            .SetGuiPresentation(Category.Condition, ConditionBaned)
+            .SetConditionType(ConditionType.Detrimental)
+            .SetPossessive()
+            // until the end of the creature's next turn
+            .SetSpecialDuration(DurationType.Round, 1)
+            .SetFeatures(
+                FeatureDefinitionBuilder
+                    .Create($"Feature{NAME}")
+                    .SetGuiPresentationNoContent(true)
+                    .AddCustomSubFeatures(new SubtractDieFromDamageRolls(DieType.D6))
+                    .AddToDB())
+            .AddToDB();
+
+        var spell = SpellDefinitionBuilder
+            .Create(NAME)
+            .SetGuiPresentation(Category.Spell, Sprites.GetSprite(NAME, Resources.GraveGround, 128))
+            .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolNecromancy)
+            .SetSpellLevel(5)
+            .SetCastingTime(ActivationTime.Action)
+            // RAW a handful of grave dirt, covered by a pouch or focus
+            .SetMaterialComponent(MaterialComponentType.Mundane)
+            .SetSomaticComponent(true)
+            .SetVerboseComponent(true)
+            .SetVocalSpellSameType(VocalSpellSemeType.Debuff)
+            .SetRequiresConcentration(true)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetDurationData(DurationType.Minute, 1)
+                    // RAW four 10-foot squares arranged as you like; here a 20-foot square
+                    .SetTargetingData(Side.Enemy, RangeType.Distance, 24, TargetType.Cube, 4, 1)
+                    .SetEffectAdvancement(EffectIncrementMethod.PerAdditionalSlotLevel, additionalDicePerIncrement: 1)
+                    .SetSavingThrowData(false, AttributeDefinitions.Strength, false,
+                        EffectDifficultyClassComputation.SpellCastingFeature)
+                    .SetRecurrentEffect(
+                        RecurrentEffect.OnActivation | RecurrentEffect.OnEnter | RecurrentEffect.OnTurnEnd)
+                    .SetEffectForms(
+                        EffectFormBuilder
+                            .Create()
+                            .HasSavingThrow(EffectSavingThrowType.Negates)
+                            .SetDamageForm(DamageTypeNecrotic, 6, DieType.D6)
+                            .Build(),
+                        EffectFormBuilder
+                            .Create()
+                            .HasSavingThrow(EffectSavingThrowType.Negates)
+                            .SetConditionForm(conditionGraveGround, ConditionForm.ConditionOperation.Add)
+                            .Build(),
+                        // RAW difficult terrain only for enemies; Solasta terrain affects every creature
+                        EffectFormBuilder.TopologyForm(TopologyForm.Type.DifficultThrough, false))
+                    .SetParticleEffectParameters(SpikeGrowth)
+                    .SetImpactEffectParameters(Blight)
+                    .Build())
+            .AddCustomSubFeatures(RecurrentEffectOncePerTurn.Mark)
+            .AddToDB();
+
+        return spell;
+    }
+
+    #endregion
+
+    #region Songal's Elemental Suffusion
+
+    internal static SpellDefinition BuildSongalsElementalSuffusion()
+    {
+        const string NAME = "SongalsElementalSuffusion";
+
+        var sprite = Sprites.GetSprite(NAME, Resources.SongalsElementalSuffusion, 128);
+        var elements = new (string DamageType, FeatureDefinitionDamageAffinity Resistance, IMagicEffect Impact)[]
+        {
+            (DamageTypeAcid, FeatureDefinitionDamageAffinitys.DamageAffinityAcidResistance, AcidSplash),
+            (DamageTypeCold, FeatureDefinitionDamageAffinitys.DamageAffinityColdResistance, RayOfFrost),
+            (DamageTypeFire, FeatureDefinitionDamageAffinitys.DamageAffinityFireResistance, FireBolt),
+            (DamageTypeLightning, FeatureDefinitionDamageAffinitys.DamageAffinityLightningResistance,
+                ShockingGrasp),
+            (DamageTypeThunder, FeatureDefinitionDamageAffinitys.DamageAffinityThunderResistance, Shatter)
+        };
+
+        var subSpells = new List<SpellDefinition>();
+
+        foreach (var (damageType, resistance, impact) in elements)
+        {
+            var element = damageType.Replace("Damage", string.Empty);
+
+            var pulseForms = new[]
+            {
+                EffectFormBuilder
+                    .Create()
+                    .HasSavingThrow(EffectSavingThrowType.HalfDamage)
+                    .SetDamageForm(damageType, 2, DieType.D6)
+                    .Build(),
+                EffectFormBuilder
+                    .Create()
+                    .HasSavingThrow(EffectSavingThrowType.Negates)
+                    .SetMotionForm(MotionForm.MotionType.FallProne)
+                    .Build()
+            };
+
+            var powerPulse = FeatureDefinitionPowerBuilder
+                .Create($"Power{NAME}{element}")
+                .SetGuiPresentation(NAME, Category.Spell, hidden: true)
+                .SetUsesFixed(ActivationTime.NoCost)
+                .SetShowCasting(false)
+                .SetEffectDescription(
+                    EffectDescriptionBuilder
+                        .Create()
+                        // RAW each creature of your choice; here enemies are affected
+                        .SetTargetingData(Side.Enemy, RangeType.Self, 0, TargetType.Sphere, 3)
+                        .ExcludeCaster()
+                        .SetSavingThrowData(false, AttributeDefinitions.Dexterity, false,
+                            EffectDifficultyClassComputation.SpellCastingFeature)
+                        .SetEffectForms(pulseForms)
+                        .SetParticleEffectParameters(Thunderwave)
+                        .SetImpactEffectParameters(impact)
+                        .Build())
+                .AddToDB();
+
+            var condition = ConditionDefinitionBuilder
+                .Create(ConditionDefinitions.ConditionFlyingAdaptive, $"Condition{NAME}{element}")
+                .SetGuiPresentation(NAME, Category.Spell, ConditionDefinitions.ConditionFlying)
+                .SetPossessive()
+                .SetParentCondition(ConditionDefinitions.ConditionFlying)
+                .SetFeatures(resistance, FeatureDefinitionMoveModes.MoveModeFly6)
+                .AddToDB();
+
+            condition.GuiPresentation.description = Gui.EmptyContent;
+            condition.AddCustomSubFeatures(new CharacterTurnStartListenerSongalsElementalSuffusion(powerPulse));
+
+            var subSpell = SpellDefinitionBuilder
+                .Create($"{NAME}{element}")
+                .SetGuiPresentation(Category.Spell, sprite)
+                .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolTransmutation)
+                .SetSpellLevel(5)
+                .SetCastingTime(ActivationTime.Action)
+                .SetSpecificMaterialComponent("Pearl", 100, false)
+                .SetSomaticComponent(true)
+                .SetVerboseComponent(true)
+                .SetVocalSpellSameType(VocalSpellSemeType.Buff)
+                .SetRequiresConcentration(true)
+                .SetEffectDescription(
+                    EffectDescriptionBuilder
+                        .Create()
+                        .SetDurationData(DurationType.Minute, 1)
+                        .SetTargetingData(Side.Enemy, RangeType.Self, 0, TargetType.Sphere, 3)
+                        .ExcludeCaster()
+                        .SetSavingThrowData(false, AttributeDefinitions.Dexterity, false,
+                            EffectDifficultyClassComputation.SpellCastingFeature)
+                        .SetEffectForms(
+                        [
+                            EffectFormBuilder.ConditionForm(condition, ConditionForm.ConditionOperation.Add, true,
+                                true),
+                            .. pulseForms
+                        ])
+                        .SetParticleEffectParameters(Thunderwave)
+                        .SetCasterEffectParameters(ConjureElemental)
+                        .SetImpactEffectParameters(impact)
+                        .Build())
+                .AddToDB();
+
+            subSpells.Add(subSpell);
+        }
+
+        var spell = SpellDefinitionBuilder
+            .Create(NAME)
+            .SetGuiPresentation(Category.Spell, sprite)
+            .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolTransmutation)
+            .SetSpellLevel(5)
+            .SetCastingTime(ActivationTime.Action)
+            // RAW a pearl worth 100+ GP, like vanilla Identify
+            .SetSpecificMaterialComponent("Pearl", 100, false)
+            .SetSomaticComponent(true)
+            .SetVerboseComponent(true)
+            .SetVocalSpellSameType(VocalSpellSemeType.Buff)
+            .SetRequiresConcentration(true)
+            .SetEffectDescription(
+                // UI Only
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetDurationData(DurationType.Minute, 1)
+                    .SetTargetingData(Side.Enemy, RangeType.Self, 0, TargetType.Sphere, 3)
+                    .Build())
+            .SetSubSpells([.. subSpells])
+            .AddToDB();
+
+        return spell;
+    }
+
+    private sealed class CharacterTurnStartListenerSongalsElementalSuffusion(FeatureDefinitionPower powerPulse)
+        : ICharacterTurnStartListener
+    {
+        public void OnCharacterTurnStarted(GameLocationCharacter character)
+        {
+            var targets = Gui.Battle?.GetContenders(character, withinRange: 3) ?? [];
+
+            if (targets.Count == 0)
+            {
+                return;
+            }
+
+            var usablePower = PowerProvider.Get(powerPulse, character.RulesetCharacter);
+
+            character.MyExecuteActionSpendPower(usablePower, [.. targets]);
+        }
+    }
+
+    #endregion
+
+    #region Spirit Lantern
+
+    private static ConditionDefinition _conditionSpiritLantern;
+    private static FeatureDefinitionPower _powerSpiritLanternPool;
+
+    internal static SpellDefinition BuildSpiritLantern()
+    {
+        const string NAME = "SpiritLantern";
+
+        var sprite = Sprites.GetSprite(NAME, Resources.SpiritLantern, 128);
+
+        // the pool holds the soul fragments: it starts empty and grows as enemies die in the lantern's light
+        var powerPool = FeatureDefinitionPowerBuilder
+            .Create($"Power{NAME}")
+            .SetGuiPresentation(Category.Feature, sprite)
+            .SetUsesFixed(ActivationTime.NoCost, RechargeRate.None, 1, 0)
+            .AddCustomSubFeatures(ModifyPowerVisibility.Hidden)
+            .AddToDB();
+
+        var powerDrainLife = FeatureDefinitionPowerSharedPoolBuilder
+            .Create($"Power{NAME}DrainLife")
+            .SetGuiPresentation(Category.Feature, sprite)
+            .SetSharedPool(ActivationTime.BonusAction, powerPool)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetTargetingData(Side.All, RangeType.Distance, 12, TargetType.IndividualsUnique)
+                    .SetSavingThrowData(false, AttributeDefinitions.Constitution, false,
+                        EffectDifficultyClassComputation.SpellCastingFeature)
+                    .SetEffectForms(
+                        EffectFormBuilder
+                            .Create()
+                            .HasSavingThrow(EffectSavingThrowType.HalfDamage)
+                            .SetDamageForm(DamageTypeNecrotic, 4, DieType.D8)
+                            .Build())
+                    .SetParticleEffectParameters(VampiricTouch)
+                    .SetImpactEffectParameters(Blight)
+                    .Build())
+            .AddToDB();
+
+        var powerRepairUndead = FeatureDefinitionPowerSharedPoolBuilder
+            .Create($"Power{NAME}RepairUndead")
+            .SetGuiPresentation(Category.Feature, sprite)
+            .SetSharedPool(ActivationTime.BonusAction, powerPool)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetTargetingData(Side.All, RangeType.Distance, 12, TargetType.IndividualsUnique)
+                    .SetEffectForms(
+                        EffectFormBuilder
+                            .Create()
+                            .SetHealingForm(HealingComputation.Dice, 0, DieType.D8, 4, false,
+                                HealingCap.MaximumHitPoints)
+                            .Build())
+                    .SetParticleEffectParameters(VampiricTouch)
+                    .SetImpactEffectParameters(CureWounds)
+                    .Build())
+            .AddToDB();
+
+        var conditionWardAlly = ConditionDefinitionBuilder
+            .Create($"Condition{NAME}WardAlly")
+            .SetGuiPresentation(Category.Condition, ConditionShielded)
+            .SetPossessive()
+            .SetSpecialDuration(DurationType.Round, 1, (TurnOccurenceType)ExtraTurnOccurenceType.StartOfSourceTurn)
+            .SetFeatures(
+                FeatureDefinitionCombatAffinityBuilder
+                    .Create($"CombatAffinity{NAME}WardAlly")
+                    .SetGuiPresentation($"Condition{NAME}WardAlly", Category.Condition, Gui.NoLocalization)
+                    .SetAttackOnMeAdvantage(AdvantageType.Disadvantage)
+                    .AddToDB())
+            .AddToDB();
+
+        var powerWardAlly = FeatureDefinitionPowerSharedPoolBuilder
+            .Create($"Power{NAME}WardAlly")
+            .SetGuiPresentation(Category.Feature, sprite)
+            .SetSharedPool(ActivationTime.BonusAction, powerPool)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetTargetingData(Side.Ally, RangeType.Distance, 12, TargetType.IndividualsUnique)
+                    .SetEffectForms(EffectFormBuilder.ConditionForm(conditionWardAlly))
+                    .SetParticleEffectParameters(ShieldOfFaith)
+                    .Build())
+            .AddToDB();
+
+        var condition = ConditionDefinitionBuilder
+            .Create($"Condition{NAME}")
+            .SetGuiPresentation(NAME, Category.Spell, ConditionDefinitions.ConditionLightSensitive)
+            .SetPossessive()
+            .SetConditionType(ConditionType.Beneficial)
+            .SetFeatures(powerPool, powerDrainLife, powerRepairUndead, powerWardAlly)
+            .AddCustomSubFeatures(AddUsablePowersFromCondition.Marker)
+            .AddToDB();
+
+        condition.GuiPresentation.description = Gui.EmptyContent;
+
+        powerPool.AddCustomSubFeatures(
+            new ModifyPowerPoolAmount
+            {
+                PowerPool = powerPool,
+                Type = PowerPoolBonusCalculationType.ConditionAmount,
+                Attribute = condition.Name
+            });
+
+        var modifySpiritLantern = new ModifyEffectDescriptionSpiritLantern(condition);
+
+        powerDrainLife.AddCustomSubFeatures(modifySpiritLantern);
+        powerRepairUndead.AddCustomSubFeatures(modifySpiritLantern, new FilterTargetingCharacterUndead());
+
+        var light = Light.EffectDescription.GetFirstFormOfType(EffectForm.EffectFormType.LightSource).lightSourceForm;
+
+        var spell = SpellDefinitionBuilder
+            .Create(NAME)
+            .SetGuiPresentation(Category.Spell, sprite)
+            .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolNecromancy)
+            .SetSpellLevel(5)
+            .SetCastingTime(ActivationTime.Action)
+            // RAW a black lantern, covered by a pouch or focus
+            .SetMaterialComponent(MaterialComponentType.Mundane)
+            .SetSomaticComponent(true)
+            .SetVerboseComponent(true)
+            .SetVocalSpellSameType(VocalSpellSemeType.Buff)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create(Light)
+                    .SetDurationData(DurationType.Minute, 10)
+                    .SetTargetingData(Side.Ally, RangeType.Self, 0, TargetType.Self)
+                    .SetEffectForms(
+                        EffectFormBuilder.ConditionForm(condition),
+                        // dim light only, in a 60-foot radius
+                        EffectFormBuilder.LightSourceForm(LightSourceType.Basic, 0, 12, light.color,
+                            light.graphicsPrefabReference))
+                    .SetCasterEffectParameters(VampiricTouch)
+                    .SetEffectEffectParameters(PowerOathOfJugementPurgeCorruption)
+                    .Build())
+            .AddToDB();
+
+        spell.AddCustomSubFeatures(new PowerOrSpellFinishedByMeSpiritLantern(powerPool, condition));
+
+        _conditionSpiritLantern = condition;
+        _powerSpiritLanternPool = powerPool;
+
+        return spell;
+    }
+
+    // an enemy died: each caster with a lantern within 60 feet of it gains a soul fragment, up to the lantern's limit
+    internal static void HandleSpiritLanternFragment(
+        GameLocationBattleManager battleManager, GameLocationCharacter downedCreature)
+    {
+        if (!_conditionSpiritLantern ||
+            battleManager.Battle == null ||
+            downedCreature.RulesetActor is not { IsDead: true })
+        {
+            return;
+        }
+
+        foreach (var caster in battleManager.Battle.AllContenders
+                     .Where(x =>
+                         x.RulesetCharacter is { IsDeadOrDyingOrUnconscious: false } &&
+                         x.IsOppositeSide(downedCreature.Side) &&
+                         x.IsWithinRange(downedCreature, 12))
+                     .ToArray())
+        {
+            var rulesetCaster = caster.RulesetCharacter;
+
+            if (!rulesetCaster.TryGetConditionOfCategoryAndType(
+                    AttributeDefinitions.TagEffect, _conditionSpiritLantern.Name, out _))
+            {
+                continue;
+            }
+
+            var usablePool = PowerProvider.Get(_powerSpiritLanternPool, rulesetCaster);
+
+            if (usablePool.RemainingUses >= rulesetCaster.GetMaxUsesOfPower(usablePool))
+            {
+                continue;
+            }
+
+            rulesetCaster.UpdateUsageForPowerPool(-1, usablePool);
+            rulesetCaster.LogCharacterAffectedByCondition(_conditionSpiritLantern);
+        }
+    }
+
+    private sealed class PowerOrSpellFinishedByMeSpiritLantern(
+        FeatureDefinitionPower powerPool,
+        ConditionDefinition conditionSpiritLantern) : IPowerOrSpellFinishedByMe
+    {
+        public IEnumerator OnPowerOrSpellFinishedByMe(CharacterActionMagicEffect action, BaseDefinition baseDefinition)
+        {
+            var rulesetCaster = action.ActingCharacter.RulesetCharacter;
+
+            if (!rulesetCaster.TryGetConditionOfCategoryAndType(
+                    AttributeDefinitions.TagEffect, conditionSpiritLantern.Name, out var activeCondition))
+            {
+                yield break;
+            }
+
+            // the lantern holds as many fragments as your spellcasting ability modifier, and starts empty
+            var abilityBonus = action.ActionParams.RulesetEffect is RulesetEffectSpell rulesetEffectSpell
+                ? rulesetEffectSpell.ComputeSourceAbilityBonus(rulesetCaster)
+                : 0;
+
+            activeCondition.Amount = System.Math.Max(1, abilityBonus);
+
+            var usablePool = PowerProvider.Get(powerPool, rulesetCaster);
+
+            rulesetCaster.UpdateUsageForPowerPool(rulesetCaster.GetMaxUsesOfPower(usablePool), usablePool);
+        }
+    }
+
+    // Drain Life and Repair Undead add your spellcasting ability modifier, stored as the lantern's amount
+    private sealed class ModifyEffectDescriptionSpiritLantern(ConditionDefinition conditionSpiritLantern)
+        : IModifyEffectDescription
+    {
+        public bool IsValid(BaseDefinition definition, RulesetCharacter character, EffectDescription effectDescription)
+        {
+            return character.TryGetConditionOfCategoryAndType(
+                AttributeDefinitions.TagEffect, conditionSpiritLantern.Name, out _);
+        }
+
+        public EffectDescription GetEffectDescription(
+            BaseDefinition definition,
+            EffectDescription effectDescription,
+            RulesetCharacter character,
+            RulesetEffect rulesetEffect)
+        {
+            if (!character.TryGetConditionOfCategoryAndType(
+                    AttributeDefinitions.TagEffect, conditionSpiritLantern.Name, out var activeCondition))
+            {
+                return effectDescription;
+            }
+
+            foreach (var effectForm in effectDescription.EffectForms)
+            {
+                // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
+                switch (effectForm.FormType)
+                {
+                    case EffectForm.EffectFormType.Damage:
+                        effectForm.DamageForm.BonusDamage = activeCondition.Amount;
+                        break;
+                    case EffectForm.EffectFormType.Healing:
+                        effectForm.HealingForm.BonusHealing = activeCondition.Amount;
+                        break;
+                }
+            }
+
+            return effectDescription;
+        }
+    }
+
+    private sealed class FilterTargetingCharacterUndead : IFilterTargetingCharacter
+    {
+        public bool EnforceFullSelection => false;
+
+        public bool IsValid(CursorLocationSelectTarget __instance, GameLocationCharacter target)
+        {
+            if (target.RulesetCharacter.CharacterFamily == CharacterFamilyDefinitions.Undead.Name)
+            {
+                return true;
+            }
+
+            __instance.actionModifier.FailureFlags.Add("Failure/&MustBeUndead");
+
+            return false;
+        }
+    }
+
+    #endregion
+
+    #region Yolande's Regal Presence
+
+    internal static SpellDefinition BuildYolandesRegalPresence()
+    {
+        const string NAME = "YolandesRegalPresence";
+
+        var spell = SpellDefinitionBuilder
+            .Create(NAME)
+            .SetGuiPresentation(Category.Spell, Sprites.GetSprite(NAME, Resources.YolandesRegalPresence, 128))
+            .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolEnchantment)
+            .SetSpellLevel(5)
+            .SetCastingTime(ActivationTime.Action)
+            // RAW a miniature tiara, covered by a pouch or focus
+            .SetMaterialComponent(MaterialComponentType.Mundane)
+            .SetSomaticComponent(true)
+            .SetVerboseComponent(true)
+            .SetVocalSpellSameType(VocalSpellSemeType.Debuff)
+            .SetRequiresConcentration(true)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetDurationData(DurationType.Minute, 1)
+                    // RAW you can force creatures you can see to save; here every enemy in the emanation saves
+                    .SetTargetingData(Side.Enemy, RangeType.Self, 0, TargetType.Sphere, 2)
+                    .ExcludeCaster()
+                    .SetSavingThrowData(false, AttributeDefinitions.Wisdom, false,
+                        EffectDifficultyClassComputation.SpellCastingFeature)
+                    .SetRecurrentEffect(RecurrentEffect.OnEnter | RecurrentEffect.OnTurnEnd)
+                    .SetParticleEffectParameters(SpiritGuardians)
+                    .SetCasterEffectParameters(HolyAura)
+                    .SetImpactEffectParameters(MindTwist)
+                    .SetEffectForms(
+                        EffectFormBuilder
+                            .Create()
+                            .SetDamageForm(DamageTypePsychic, 4, DieType.D6)
+                            .HasSavingThrow(EffectSavingThrowType.HalfDamage)
+                            .Build(),
+                        EffectFormBuilder
+                            .Create()
+                            .SetMotionForm(MotionForm.MotionType.FallProne)
+                            .HasSavingThrow(EffectSavingThrowType.Negates)
+                            .Build(),
+                        // RAW the push is optional; here it always pushes 10 feet
+                        EffectFormBuilder
+                            .Create()
+                            .SetMotionForm(MotionForm.MotionType.PushFromOrigin, 2)
+                            .HasSavingThrow(EffectSavingThrowType.Negates)
+                            .Build())
+                    .Build())
+            .AddCustomSubFeatures(
+                ApplyRecurrentEffectWhenSourceMoves.Mark,
+                RecurrentEffectOncePerTurn.Mark)
+            .AddToDB();
+
+        return spell;
+    }
+
+    #endregion
+
+    #region Destructive Wave
+
+    internal static SpellDefinition BuildDestructiveWave()
+    {
+        const string NAME = "DestructiveWave";
+
+        var sprite = Sprites.GetSprite(NAME, Resources.DestructiveWave, 128);
+        var subSpells = new List<SpellDefinition>();
+
+        var damageTypes = new (string DamageType, IMagicEffect Impact)[]
+        {
+            (DamageTypeRadiant, Sunburst), (DamageTypeNecrotic, Blight)
+        };
+
+        foreach (var (damageType, impact) in damageTypes)
+        {
+            var subSpell = SpellDefinitionBuilder
+                .Create($"{NAME}{damageType.Replace("Damage", string.Empty)}")
+                .SetGuiPresentation(Category.Spell, sprite)
+                .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolEvocation)
+                .SetSpellLevel(5)
+                .SetCastingTime(ActivationTime.Action)
+                .SetMaterialComponent(MaterialComponentType.None)
+                .SetSomaticComponent(false)
+                .SetVerboseComponent(true)
+                .SetVocalSpellSameType(VocalSpellSemeType.Attack)
+                .SetEffectDescription(
+                    EffectDescriptionBuilder
+                        .Create()
+                        // RAW each creature you choose; here enemies are affected
+                        .SetTargetingData(Side.Enemy, RangeType.Self, 0, TargetType.Sphere, 6)
+                        .ExcludeCaster()
+                        .SetSavingThrowData(false, AttributeDefinitions.Constitution, false,
+                            EffectDifficultyClassComputation.SpellCastingFeature)
+                        .SetEffectForms(
+                            EffectFormBuilder
+                                .Create()
+                                .HasSavingThrow(EffectSavingThrowType.HalfDamage)
+                                .SetDamageForm(DamageTypeThunder, 5, DieType.D6)
+                                .Build(),
+                            EffectFormBuilder
+                                .Create()
+                                .HasSavingThrow(EffectSavingThrowType.HalfDamage)
+                                .SetDamageForm(damageType, 5, DieType.D6)
+                                .Build(),
+                            EffectFormBuilder
+                                .Create()
+                                .HasSavingThrow(EffectSavingThrowType.Negates)
+                                .SetMotionForm(MotionForm.MotionType.FallProne)
+                                .Build())
+                        .SetParticleEffectParameters(Thunderwave)
+                        .SetCasterEffectParameters(DivineWord)
+                        .SetImpactEffectParameters(impact)
+                        .Build())
+                .AddToDB();
+
+            subSpells.Add(subSpell);
+        }
+
+        var spell = SpellDefinitionBuilder
+            .Create(NAME)
+            .SetGuiPresentation(Category.Spell, sprite)
+            .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolEvocation)
+            .SetSpellLevel(5)
+            .SetCastingTime(ActivationTime.Action)
+            .SetMaterialComponent(MaterialComponentType.None)
+            .SetSomaticComponent(false)
+            .SetVerboseComponent(true)
+            .SetVocalSpellSameType(VocalSpellSemeType.Attack)
+            .SetEffectDescription(
+                // UI Only
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetTargetingData(Side.Enemy, RangeType.Self, 0, TargetType.Sphere, 6)
+                    .Build())
+            .SetSubSpells([.. subSpells])
+            .AddToDB();
+
+        return spell;
+    }
+
+    #endregion
 }
