@@ -2477,7 +2477,7 @@ internal static partial class SpellBuilders
 
         condition.GuiPresentation.description = Gui.EmptyContent;
         condition.AddCustomSubFeatures(new CustomBehaviorSylunesViper(condition));
-        powerVenomousBite.AddCustomSubFeatures(new ModifyEffectDescriptionSylunesViper(condition));
+        powerVenomousBite.AddCustomSubFeatures(new ModifyEffectDescriptionSylunesViper(powerVenomousBite, condition));
 
         var spell = SpellDefinitionBuilder
             .Create(NAME)
@@ -2511,13 +2511,16 @@ internal static partial class SpellBuilders
     }
 
     // Venomous Bite deals 1d6 more force damage for each slot level above 3rd
-    private sealed class ModifyEffectDescriptionSylunesViper(ConditionDefinition conditionSylunesViper)
-        : IModifyEffectDescription
+    private sealed class ModifyEffectDescriptionSylunesViper(
+        FeatureDefinitionPower powerVenomousBite,
+        ConditionDefinition conditionSylunesViper) : IModifyEffectDescription
     {
+        // the caster also picks this up from the condition's power, so only modify Venomous Bite itself
         public bool IsValid(BaseDefinition definition, RulesetCharacter character, EffectDescription effectDescription)
         {
-            return character.TryGetConditionOfCategoryAndType(
-                AttributeDefinitions.TagEffect, conditionSylunesViper.Name, out _);
+            return definition == powerVenomousBite &&
+                   character.TryGetConditionOfCategoryAndType(
+                       AttributeDefinitions.TagEffect, conditionSylunesViper.Name, out _);
         }
 
         public EffectDescription GetEffectDescription(

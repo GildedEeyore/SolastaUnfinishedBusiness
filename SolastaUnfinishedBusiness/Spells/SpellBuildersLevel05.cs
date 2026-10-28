@@ -2029,10 +2029,10 @@ internal static partial class SpellBuilders
                 Attribute = condition.Name
             });
 
-        var modifySpiritLantern = new ModifyEffectDescriptionSpiritLantern(condition);
-
-        powerDrainLife.AddCustomSubFeatures(modifySpiritLantern);
-        powerRepairUndead.AddCustomSubFeatures(modifySpiritLantern, new FilterTargetingCharacterUndead());
+        powerDrainLife.AddCustomSubFeatures(new ModifyEffectDescriptionSpiritLantern(powerDrainLife, condition));
+        powerRepairUndead.AddCustomSubFeatures(
+            new ModifyEffectDescriptionSpiritLantern(powerRepairUndead, condition),
+            new FilterTargetingCharacterUndead());
 
         var light = Light.EffectDescription.GetFirstFormOfType(EffectForm.EffectFormType.LightSource).lightSourceForm;
 
@@ -2136,13 +2136,16 @@ internal static partial class SpellBuilders
     }
 
     // Drain Life and Repair Undead add your spellcasting ability modifier, stored as the lantern's amount
-    private sealed class ModifyEffectDescriptionSpiritLantern(ConditionDefinition conditionSpiritLantern)
-        : IModifyEffectDescription
+    private sealed class ModifyEffectDescriptionSpiritLantern(
+        FeatureDefinitionPower power,
+        ConditionDefinition conditionSpiritLantern) : IModifyEffectDescription
     {
+        // the caster also picks this up from the condition's powers, so only modify the power it belongs to
         public bool IsValid(BaseDefinition definition, RulesetCharacter character, EffectDescription effectDescription)
         {
-            return character.TryGetConditionOfCategoryAndType(
-                AttributeDefinitions.TagEffect, conditionSpiritLantern.Name, out _);
+            return definition == power &&
+                   character.TryGetConditionOfCategoryAndType(
+                       AttributeDefinitions.TagEffect, conditionSpiritLantern.Name, out _);
         }
 
         public EffectDescription GetEffectDescription(
