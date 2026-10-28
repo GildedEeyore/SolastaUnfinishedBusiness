@@ -66,7 +66,6 @@ internal static class ModUi
         "CrownOfStars",
         "CrusadersMantle",
         "Dawn",
-        "DestructiveWave",
         "DissonantWhispers",
         "DivineWrath",
         "DomainArcana",

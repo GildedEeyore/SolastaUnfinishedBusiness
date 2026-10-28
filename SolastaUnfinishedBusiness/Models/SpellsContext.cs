@@ -395,7 +395,6 @@ internal static class SpellsContext
         RegisterSpell(BanishingSmite, 0, SpellListPaladin);
         RegisterSpell(BuildCircleOfMagicalNegation(), 0, SpellListPaladin);
         RegisterSpell(BuildDawn(), 0, SpellListCleric, SpellListWizard);
-        RegisterSpell(BuildDestructiveWave(), 0, SpellListPaladin);
         RegisterSpell(DivineWrath, 0, SpellListPaladin);
         RegisterSpell(BuildEmpoweredKnowledge(), 0, SpellListBard, SpellListSorcerer, SpellListWizard,
             spellListInventorClass);
