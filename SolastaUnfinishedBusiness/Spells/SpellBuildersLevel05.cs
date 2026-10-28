@@ -15,6 +15,7 @@ using SolastaUnfinishedBusiness.Models;
 using SolastaUnfinishedBusiness.Properties;
 using SolastaUnfinishedBusiness.Validators;
 using TA;
+using UnityEngine.AddressableAssets;
 using static RuleDefinitions;
 using static SolastaUnfinishedBusiness.Api.DatabaseHelper;
 using static SolastaUnfinishedBusiness.Api.DatabaseHelper.ConditionDefinitions;
@@ -1786,19 +1787,27 @@ internal static partial class SpellBuilders
         const string NAME = "SongalsElementalSuffusion";
 
         var sprite = Sprites.GetSprite(NAME, Resources.SongalsElementalSuffusion, 128);
-        var elements = new (string DamageType, FeatureDefinitionDamageAffinity Resistance, IMagicEffect Impact)[]
-        {
-            (DamageTypeAcid, FeatureDefinitionDamageAffinitys.DamageAffinityAcidResistance, AcidSplash),
-            (DamageTypeCold, FeatureDefinitionDamageAffinitys.DamageAffinityColdResistance, RayOfFrost),
-            (DamageTypeFire, FeatureDefinitionDamageAffinitys.DamageAffinityFireResistance, FireBolt),
-            (DamageTypeLightning, FeatureDefinitionDamageAffinitys.DamageAffinityLightningResistance,
-                ShockingGrasp),
-            (DamageTypeThunder, FeatureDefinitionDamageAffinitys.DamageAffinityThunderResistance, Shatter)
-        };
+        // the aura shown on the caster while suffused, picked to match the chosen element
+        var elements = new (string DamageType, FeatureDefinitionDamageAffinity Resistance, IMagicEffect Impact,
+            AssetReference Particles)[]
+            {
+                (DamageTypeAcid, FeatureDefinitionDamageAffinitys.DamageAffinityAcidResistance, AcidSplash,
+                    ConditionOnAcidPilgrim.conditionParticleReference),
+                (DamageTypeCold, FeatureDefinitionDamageAffinitys.DamageAffinityColdResistance, RayOfFrost,
+                    MonsterDefinitions.WindSnake.MonsterPresentation.attachedParticlesReference),
+                (DamageTypeFire, FeatureDefinitionDamageAffinitys.DamageAffinityFireResistance, FireBolt,
+                    MonsterDefinitions.Fire_Jester.MonsterPresentation.attachedParticlesReference),
+                (DamageTypeLightning, FeatureDefinitionDamageAffinitys.DamageAffinityLightningResistance,
+                    ShockingGrasp,
+                    PowerTraditionShockArcanistArcaneFury.EffectDescription.EffectParticleParameters
+                        .conditionParticleReference),
+                (DamageTypeThunder, FeatureDefinitionDamageAffinitys.DamageAffinityThunderResistance, Shatter,
+                    MonsterDefinitions.Air_Elemental.MonsterPresentation.attachedParticlesReference)
+            };
 
         var subSpells = new List<SpellDefinition>();
 
-        foreach (var (damageType, resistance, impact) in elements)
+        foreach (var (damageType, resistance, impact, particles) in elements)
         {
             var element = damageType.Replace("Damage", string.Empty);
 
@@ -1841,6 +1850,7 @@ internal static partial class SpellBuilders
                 .SetPossessive()
                 .SetParentCondition(ConditionDefinitions.ConditionFlying)
                 .SetFeatures(resistance, FeatureDefinitionMoveModes.MoveModeFly6)
+                .SetConditionParticleReference(particles)
                 .AddToDB();
 
             condition.GuiPresentation.description = Gui.EmptyContent;
@@ -2295,89 +2305,6 @@ internal static partial class SpellBuilders
                 rulesetCharacter, rulesetCharacter.guid, rulesetCharacter, rulesetCharacter.guid,
                 activeCondition, AttributeDefinitions.TagEffect);
         }
-    }
-
-    #endregion
-
-    #region Destructive Wave
-
-    internal static SpellDefinition BuildDestructiveWave()
-    {
-        const string NAME = "DestructiveWave";
-
-        var sprite = Sprites.GetSprite(NAME, Resources.DestructiveWave, 128);
-        var subSpells = new List<SpellDefinition>();
-
-        var damageTypes = new (string DamageType, IMagicEffect Impact)[]
-        {
-            (DamageTypeRadiant, Sunburst), (DamageTypeNecrotic, Blight)
-        };
-
-        foreach (var (damageType, impact) in damageTypes)
-        {
-            var subSpell = SpellDefinitionBuilder
-                .Create($"{NAME}{damageType.Replace("Damage", string.Empty)}")
-                .SetGuiPresentation(Category.Spell, sprite)
-                .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolEvocation)
-                .SetSpellLevel(5)
-                .SetCastingTime(ActivationTime.Action)
-                .SetMaterialComponent(MaterialComponentType.None)
-                .SetSomaticComponent(false)
-                .SetVerboseComponent(true)
-                .SetVocalSpellSameType(VocalSpellSemeType.Attack)
-                .SetEffectDescription(
-                    EffectDescriptionBuilder
-                        .Create()
-                        // RAW each creature you choose; here enemies are affected
-                        .SetTargetingData(Side.Enemy, RangeType.Self, 0, TargetType.Sphere, 6)
-                        .ExcludeCaster()
-                        .SetSavingThrowData(false, AttributeDefinitions.Constitution, false,
-                            EffectDifficultyClassComputation.SpellCastingFeature)
-                        .SetEffectForms(
-                            EffectFormBuilder
-                                .Create()
-                                .HasSavingThrow(EffectSavingThrowType.HalfDamage)
-                                .SetDamageForm(DamageTypeThunder, 5, DieType.D6)
-                                .Build(),
-                            EffectFormBuilder
-                                .Create()
-                                .HasSavingThrow(EffectSavingThrowType.HalfDamage)
-                                .SetDamageForm(damageType, 5, DieType.D6)
-                                .Build(),
-                            EffectFormBuilder
-                                .Create()
-                                .HasSavingThrow(EffectSavingThrowType.Negates)
-                                .SetMotionForm(MotionForm.MotionType.FallProne)
-                                .Build())
-                        .SetParticleEffectParameters(Thunderwave)
-                        .SetCasterEffectParameters(DivineWord)
-                        .SetImpactEffectParameters(impact)
-                        .Build())
-                .AddToDB();
-
-            subSpells.Add(subSpell);
-        }
-
-        var spell = SpellDefinitionBuilder
-            .Create(NAME)
-            .SetGuiPresentation(Category.Spell, sprite)
-            .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolEvocation)
-            .SetSpellLevel(5)
-            .SetCastingTime(ActivationTime.Action)
-            .SetMaterialComponent(MaterialComponentType.None)
-            .SetSomaticComponent(false)
-            .SetVerboseComponent(true)
-            .SetVocalSpellSameType(VocalSpellSemeType.Attack)
-            .SetEffectDescription(
-                // UI Only
-                EffectDescriptionBuilder
-                    .Create()
-                    .SetTargetingData(Side.Enemy, RangeType.Self, 0, TargetType.Sphere, 6)
-                    .Build())
-            .SetSubSpells([.. subSpells])
-            .AddToDB();
-
-        return spell;
     }
 
     #endregion
