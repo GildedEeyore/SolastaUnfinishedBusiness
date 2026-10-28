@@ -2203,6 +2203,14 @@ internal static partial class SpellBuilders
     {
         const string NAME = "YolandesRegalPresence";
 
+        // shows the emanation around the caster, the same way Spirit Guardians does
+        var conditionSelf = ConditionDefinitionBuilder
+            .Create($"Condition{NAME}Self")
+            .SetGuiPresentationNoContent(true)
+            .SetSilent(Silent.WhenAddedOrRemoved)
+            .CopyParticleReferences(ConditionSpiritGuardiansSelf)
+            .AddToDB();
+
         var spell = SpellDefinitionBuilder
             .Create(NAME)
             .SetGuiPresentation(Category.Spell, Sprites.GetSprite(NAME, Resources.YolandesRegalPresence, 128))
@@ -2248,10 +2256,45 @@ internal static partial class SpellBuilders
                     .Build())
             .AddCustomSubFeatures(
                 ApplyRecurrentEffectWhenSourceMoves.Mark,
-                RecurrentEffectOncePerTurn.Mark)
+                RecurrentEffectOncePerTurn.Mark,
+                new PowerOrSpellFinishedByMeYolandesRegalPresence(conditionSelf))
             .AddToDB();
 
         return spell;
+    }
+
+    // the spell has no effect on activation, so its effect forms never reach the caster on cast
+    private sealed class PowerOrSpellFinishedByMeYolandesRegalPresence(ConditionDefinition conditionSelf)
+        : IPowerOrSpellFinishedByMe
+    {
+        public IEnumerator OnPowerOrSpellFinishedByMe(CharacterActionMagicEffect action, BaseDefinition baseDefinition)
+        {
+            if (action.Countered || action.ExecutionFailed)
+            {
+                yield break;
+            }
+
+            var rulesetCharacter = action.ActingCharacter.RulesetCharacter;
+            var rulesetEffect = action.ActionParams.RulesetEffect;
+            var activeCondition = rulesetCharacter.InflictCondition(
+                conditionSelf.Name,
+                DurationType.Round,
+                rulesetEffect.RemainingRounds,
+                TurnOccurenceType.EndOfTurn,
+                AttributeDefinitions.TagEffect,
+                rulesetCharacter.guid,
+                rulesetCharacter.CurrentFaction.Name,
+                1,
+                conditionSelf.Name,
+                0,
+                0,
+                0);
+
+            // ends the visual together with the spell, including when concentration is lost
+            rulesetEffect.TrackCondition(
+                rulesetCharacter, rulesetCharacter.guid, rulesetCharacter, rulesetCharacter.guid,
+                activeCondition, AttributeDefinitions.TagEffect);
+        }
     }
 
     #endregion
