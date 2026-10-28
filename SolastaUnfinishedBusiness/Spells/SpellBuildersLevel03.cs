@@ -1705,6 +1705,8 @@ internal static partial class SpellBuilders
             .SetGuiPresentation(Category.Condition, ConditionShielded)
             .SetPossessive()
             .SetFeatures(FeatureDefinitionDamageAffinitys.DamageAffinityThunderResistance, combatAffinity)
+            // shows the emanation around the caster, the same way Spirit Guardians does
+            .CopyParticleReferences(ConditionSpiritGuardiansSelf)
             .AddToDB();
 
         var spell = SpellDefinitionBuilder
