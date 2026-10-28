@@ -190,6 +190,10 @@
       <HintPath>$(SolastaInstallDir)/Solasta_Data/Managed/UnityEngine.UIModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="UnityEngine.ParticleSystemModule">
+      <HintPath>$(SolastaInstallDir)/Solasta_Data/Managed/UnityEngine.ParticleSystemModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="UnityEngine.PhysicsModule">
       <HintPath>$(SolastaInstallDir)/Solasta_Data/Managed/UnityEngine.PhysicsModule.dll</HintPath>
       <Private>false</Private>

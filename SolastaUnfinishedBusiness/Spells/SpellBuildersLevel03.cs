@@ -1682,6 +1682,10 @@ internal static partial class SpellBuilders
 
     #region Cacophonic Shield
 
+    // light blue
+    private const float CacophonicShieldHue = 0.58f;
+    private const float CacophonicShieldMinSaturation = 0.35f;
+
     internal static SpellDefinition BuildCacophonicShield()
     {
         const string Name = "CacophonicShield";
@@ -1708,6 +1712,17 @@ internal static partial class SpellBuilders
             // shows the emanation around the caster, the same way Spirit Guardians does
             .CopyParticleReferences(ConditionSpiritGuardiansSelf)
             .AddToDB();
+
+        // tints the emanation blue so it stands apart from Spirit Guardians; Yolande's Regal Presence keeps the original
+        RecoloredParticles.Recolor(conditionSelf.conditionStartParticleReference, $"{Name}StartParticle",
+            CacophonicShieldHue, CacophonicShieldMinSaturation,
+            reference => conditionSelf.conditionStartParticleReference = reference);
+        RecoloredParticles.Recolor(conditionSelf.conditionParticleReference, $"{Name}Particle",
+            CacophonicShieldHue, CacophonicShieldMinSaturation,
+            reference => conditionSelf.conditionParticleReference = reference);
+        RecoloredParticles.Recolor(conditionSelf.conditionEndParticleReference, $"{Name}EndParticle",
+            CacophonicShieldHue, CacophonicShieldMinSaturation,
+            reference => conditionSelf.conditionEndParticleReference = reference);
 
         var spell = SpellDefinitionBuilder
             .Create(Name)

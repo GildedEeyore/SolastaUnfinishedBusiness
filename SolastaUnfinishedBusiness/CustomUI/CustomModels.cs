@@ -272,6 +272,9 @@ public static class CustomModels
     private static readonly Dictionary<string, GameObject> PrefabsByGuid = [];
     private static readonly Dictionary<string, Material> MaterialsByGuid = [];
 
+    // particle prefabs are kept apart from the Blender models so SwitchRenderer doesn't look for a MeshRenderer on them
+    private static readonly Dictionary<string, GameObject> ParticlePrefabsByGuid = [];
+
     internal static void SwitchRenderer(bool enabled)
     {
         foreach (var meshRenderer in PrefabsByGuid.Values.Select(gameObject => gameObject.GetComponent<MeshRenderer>()))
@@ -283,7 +286,15 @@ public static class CustomModels
     [CanBeNull]
     internal static GameObject GetPrefabByGuid([NotNull] string guid)
     {
-        return PrefabsByGuid.TryGetValue(guid, out var prefab) ? prefab : null;
+        return PrefabsByGuid.TryGetValue(guid, out var prefab) ||
+               ParticlePrefabsByGuid.TryGetValue(guid, out prefab)
+            ? prefab
+            : null;
+    }
+
+    internal static void AddParticlePrefab([NotNull] string guid, GameObject prefab)
+    {
+        ParticlePrefabsByGuid[guid] = prefab;
     }
 
     internal static Material GetMaterialByGuid([NotNull] string guid)
