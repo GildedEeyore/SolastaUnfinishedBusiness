@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
@@ -1525,6 +1526,10 @@ internal static partial class SpellBuilders
 
     #region Wall of Force
 
+    // violet
+    private const float WallOfForceHue = 0.77f;
+    private const float WallOfForceMinSaturation = 0.6f;
+
     internal static SpellDefinition BuildWallOfForce()
     {
         // vanilla ships Wall of Force flagged as not implemented, so reuse its definition, proxy and particles
@@ -1541,10 +1546,36 @@ internal static partial class SpellBuilders
         spell.EffectDescription.EffectForms.Add(
             EffectFormBuilder.TopologyForm(TopologyForm.Type.ProjectileBlocker, true));
 
+        // vanilla gives the wall the Wall of Air particles, so they're tinted purple to tell the two apart
+        var particles = spell.EffectDescription.EffectParticleParameters;
+
+        RecoloredParticles.Recolor(particles.casterParticleReference, "WallOfForceCasterParticle",
+            WallOfForceHue, WallOfForceMinSaturation,
+            reference => ReplaceWallOfForceParticles(x => x.casterParticleReference = reference));
+        RecoloredParticles.Recolor(particles.impactParticleReference, "WallOfForceImpactParticle",
+            WallOfForceHue, WallOfForceMinSaturation,
+            reference => ReplaceWallOfForceParticles(x => x.impactParticleReference = reference));
+        RecoloredParticles.Recolor(particles.activeEffectCellParticleReference, "WallOfForceCellParticle",
+            WallOfForceHue, WallOfForceMinSaturation,
+            reference => ReplaceWallOfForceParticles(x => x.activeEffectCellParticleReference = reference));
+
         // a Disintegrate spell destroys the wall instantly
         Disintegrate.AddCustomSubFeatures(new PowerOrSpellFinishedByMeDisintegrateWallOfForce());
 
         return spell;
+    }
+
+    // swaps in a copy of the particle parameters, as the Alchemy force breath bomb shares the vanilla instance
+    private static void ReplaceWallOfForceParticles(Action<EffectParticleParameters> change)
+    {
+        var effectDescription = WallOfForce.EffectDescription;
+        var particles = new EffectParticleParameters();
+
+        particles.Copy(effectDescription.EffectParticleParameters);
+        particles.activeEffectSurfaceParticlePerIndexCount =
+            effectDescription.EffectParticleParameters.activeEffectSurfaceParticlePerIndexCount;
+        change(particles);
+        effectDescription.effectParticleParameters = particles;
     }
 
     private sealed class PowerOrSpellFinishedByMeDisintegrateWallOfForce : IPowerOrSpellFinishedByMe

@@ -139,6 +139,9 @@ internal static class BootContext
             // Save by location initialization depends on services to be ready
             SaveByLocationContext.LateLoad();
 
+            // Recolored particle copies need the spells and conditions that ask for them to be built
+            RecoloredParticles.Load();
+
             // Recache all gui collections
             GuiWrapperContext.Recache();
 
