@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using JetBrains.Annotations;
 using SolastaUnfinishedBusiness.Api.GameExtensions;
 using SolastaUnfinishedBusiness.Api.Helpers;
@@ -41,7 +42,7 @@ public sealed class SorcerousSpellfire : AbstractSubclass
 
         // Spellfire Burst
 
-        // marks that sorcery points were spent this turn, the burst powers can only be used while it's present
+        // no longer applied, kept so saved characters that still carry it load fine
         _conditionSpellfireBurst = ConditionDefinitionBuilder
             .Create($"Condition{Name}SpellfireBurst")
             .SetGuiPresentation(Category.Condition, ConditionDefinitions.ConditionHeraldOfBattle)
@@ -58,8 +59,6 @@ public sealed class SorcerousSpellfire : AbstractSubclass
             .Create($"Power{Name}SpellfireBurst")
             .SetGuiPresentation(Category.Feature, FeatureDefinitionPowers.PowerDomainElementalFireBurst)
             .SetUsesFixed(ActivationTime.NoCost)
-            .AddCustomSubFeatures(
-                new ValidatorsValidatePowerUse(ValidatorsCharacter.HasAnyOfConditions(_conditionSpellfireBurst.Name)))
             .AddToDB();
 
         var powerBolsteringFlames = FeatureDefinitionPowerSharedPoolBuilder
@@ -107,10 +106,14 @@ public sealed class SorcerousSpellfire : AbstractSubclass
 
         foreach (var power in spellfireBurstPowers)
         {
-            power.AddCustomSubFeatures(
-                new ValidatorsValidatePowerUse(ValidatorsCharacter.HasAnyOfConditions(_conditionSpellfireBurst.Name)),
-                customBehaviorSpellfireBurst);
+            power.AddCustomSubFeatures(ModifyPowerVisibility.Hidden, customBehaviorSpellfireBurst);
         }
+
+        // the burst is offered in a prompt once the spell or power that spent the sorcery points finishes
+        _powerSpellfireBurst.AddCustomSubFeatures(
+            ModifyPowerVisibility.Hidden,
+            new MagicEffectFinishedByMeSpellfireBurst(
+                powerBolsteringFlames, powerRadiantFireFire, powerRadiantFireRadiant));
 
         PowerBundle.RegisterPowerBundle(_powerSpellfireBurst, false, spellfireBurstPowers);
 
@@ -228,13 +231,14 @@ public sealed class SorcerousSpellfire : AbstractSubclass
 
     private static string SpellfireBurstUsageKey => $"Power{Name}SpellfireBurst";
 
+    private static string SpellfireBurstPendingKey => $"Power{Name}SpellfireBurstPending";
+
     // called from RulesetCharacter.SpendSorceryPoints, which every sorcery point expense goes through
     internal static void OnSorceryPointsSpent(RulesetCharacter rulesetCharacter, int spentPoints)
     {
         if (spentPoints <= 0 ||
             _powerSpellfireBurst == null ||
-            !rulesetCharacter.HasAnyFeature(_powerSpellfireBurst) ||
-            rulesetCharacter.HasConditionOfType(_conditionSpellfireBurst.Name))
+            !rulesetCharacter.HasAnyFeature(_powerSpellfireBurst))
         {
             return;
         }
@@ -255,19 +259,7 @@ public sealed class SorcerousSpellfire : AbstractSubclass
             return;
         }
 
-        rulesetCharacter.InflictCondition(
-            _conditionSpellfireBurst.Name,
-            battle != null ? DurationType.Round : DurationType.Minute,
-            battle != null ? 0 : 1,
-            TurnOccurenceType.EndOfTurn,
-            AttributeDefinitions.TagEffect,
-            rulesetCharacter.guid,
-            rulesetCharacter.CurrentFaction.Name,
-            1,
-            _conditionSpellfireBurst.Name,
-            0,
-            0,
-            0);
+        character.SetSpecialFeatureUses(SpellfireBurstPendingKey, 1);
     }
 
     // called from RulesetActor.HasSpecialHalfDamage to apply Spell Avoidance
@@ -281,7 +273,7 @@ public sealed class SorcerousSpellfire : AbstractSubclass
     private sealed class CustomBehaviorSpellfireBurst(
         FeatureDefinition featureHonedSpellfire,
         FeatureDefinitionPower powerBolsteringFlames,
-        FeatureDefinitionPower[] spellfireBurstPowers) : IModifyEffectDescription, IPowerOrSpellFinishedByMe
+        FeatureDefinitionPower[] spellfireBurstPowers) : IModifyEffectDescription
     {
         public bool IsValid(BaseDefinition definition, RulesetCharacter character, EffectDescription effectDescription)
         {
@@ -318,20 +310,103 @@ public sealed class SorcerousSpellfire : AbstractSubclass
 
             return effectDescription;
         }
+    }
 
-        public IEnumerator OnPowerOrSpellFinishedByMe(CharacterActionMagicEffect action, BaseDefinition baseDefinition)
+    private sealed class MagicEffectFinishedByMeSpellfireBurst(
+        FeatureDefinitionPower powerBolsteringFlames,
+        FeatureDefinitionPower powerRadiantFireFire,
+        FeatureDefinitionPower powerRadiantFireRadiant) : IMagicEffectFinishedByMe
+    {
+        private const string SpellfireBurst = "SorcerousSpellfireBurst";
+
+        public IEnumerator OnMagicEffectFinishedByMe(
+            CharacterAction action,
+            GameLocationCharacter attacker,
+            List<GameLocationCharacter> targets)
         {
-            var actingCharacter = action.ActingCharacter;
-            var rulesetCharacter = actingCharacter.RulesetCharacter;
-
-            rulesetCharacter.RemoveAllConditionsOfType(_conditionSpellfireBurst.Name);
-
-            if (Gui.Battle != null)
+            if (attacker.GetSpecialFeatureUses(SpellfireBurstPendingKey) <= 0)
             {
-                actingCharacter.SetSpecialFeatureUses(SpellfireBurstUsageKey, 1);
+                yield break;
             }
 
-            yield break;
+            var battle = Gui.Battle;
+
+            if (battle != null && battle.ActiveContender != attacker)
+            {
+                yield break;
+            }
+
+            attacker.SetSpecialFeatureUses(SpellfireBurstPendingKey, 0);
+
+            var rulesetAttacker = attacker.RulesetCharacter;
+
+            if (rulesetAttacker is not { IsDeadOrDyingOrUnconscious: false } ||
+                (battle != null && !attacker.OncePerTurnIsValid(SpellfireBurstUsageKey)))
+            {
+                yield break;
+            }
+
+            var characterService = ServiceRepository.GetService<IGameLocationCharacterService>();
+            var inRange = characterService.AllValidEntities
+                .Where(x =>
+                    x.RulesetCharacter is { IsDeadOrDyingOrUnconscious: false } &&
+                    (x == attacker || (x.IsWithinRange(attacker, 6) && attacker.CanPerceiveTarget(x))))
+                .ToList();
+            var allies = inRange
+                .Where(x => x.Side == attacker.Side)
+                .OrderBy(x => x == attacker ? 0 : 1)
+                .ToList();
+            var enemies = inRange
+                .Where(x => x != attacker && attacker.IsOppositeSide(x.Side))
+                .ToList();
+
+            // one prompt listing every effect and target combination, the option index picks the pair
+            var choices = new List<(FeatureDefinitionPower power, GameLocationCharacter target)>();
+            var options = new List<(string label, bool available)>();
+
+            foreach (var ally in allies)
+            {
+                choices.Add((powerBolsteringFlames, ally));
+                options.Add((ally == attacker
+                    ? Gui.Localize("Reaction/&CustomReactionSorcerousSpellfireBurstBolsteringSelf")
+                    : "CustomReactionSorcerousSpellfireBurstBolstering".Formatted(Category.Reaction, ally.Name),
+                    true));
+            }
+
+            foreach (var enemy in enemies)
+            {
+                choices.Add((powerRadiantFireFire, enemy));
+                options.Add(("CustomReactionSorcerousSpellfireBurstFire".Formatted(Category.Reaction, enemy.Name),
+                    true));
+                choices.Add((powerRadiantFireRadiant, enemy));
+                options.Add(("CustomReactionSorcerousSpellfireBurstRadiant".Formatted(Category.Reaction, enemy.Name),
+                    true));
+            }
+
+            var selected = -1;
+
+            yield return attacker.MyReactToSelectOption(
+                attacker,
+                SpellfireBurst,
+                Gui.Localize("Reaction/&CustomReactionSorcerousSpellfireBurstDescription"),
+                options,
+                option => selected = option);
+
+            if (selected < 0)
+            {
+                yield break;
+            }
+
+            if (battle != null)
+            {
+                attacker.SetSpecialFeatureUses(SpellfireBurstUsageKey, 1);
+            }
+
+            var (power, target) = choices[selected];
+            var usablePower = PowerProvider.Get(power, rulesetAttacker);
+
+            // spellfire burst powers are use at will powers
+            attacker.MyExecuteActionSpendPower(usablePower, target);
         }
     }
 
