@@ -3000,4 +3000,34 @@
       PublicKeyToken=b03f5f7f11d50a3a
     </value>
   </data>
+  <data name="GraveGround" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Spells\GraveGround.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
+      PublicKeyToken=b03f5f7f11d50a3a
+    </value>
+  </data>
+  <data name="SearingOrb" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Spells\SearingOrb.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
+      PublicKeyToken=b03f5f7f11d50a3a
+    </value>
+  </data>
+  <data name="SongalsElementalSuffusion" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Spells\SongalsElementalSuffusion.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
+      PublicKeyToken=b03f5f7f11d50a3a
+    </value>
+  </data>
+  <data name="SpiritLantern" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Spells\SpiritLantern.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
+      PublicKeyToken=b03f5f7f11d50a3a
+    </value>
+  </data>
+  <data name="SylunesViper" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Spells\SylunesViper.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
+      PublicKeyToken=b03f5f7f11d50a3a
+    </value>
+  </data>
+  <data name="YolandesRegalPresence" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Spells\YolandesRegalPresence.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
+      PublicKeyToken=b03f5f7f11d50a3a
+    </value>
+  </data>
 </root>

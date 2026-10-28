@@ -179,6 +179,7 @@ internal static class ModUi
         "GentleRepose",
         "Glibness",
         "GiftOfAlacrity",
+        "GraveGround",
         "GravityFissure",
         "GravitySinkhole",
         "HeroicInfusion",
@@ -284,18 +285,21 @@ internal static class ModUi
         "RoguishSlayer",
         "Sanctuary",
         "Scatter",
+        "SearingOrb",
         "SearingSmite",
         "ShadowBlade",
         "ShadowOfMoil",
         "Shapechange",
         "SickeningRadiance",
         "SkinOfRetribution",
+        "SongalsElementalSuffusion",
         "SorcerousDivineHeart",
         "SorcerousSpellfire",
         "SorcerousWildMagic",
         "SnillocSnowballStorm",
         "SpellWeb",
         "SpikeBarrage",
+        "SpiritLantern",
         "SpiritShroud",
         "StaggeringSmite",
         "StarryWisp",
@@ -305,6 +309,7 @@ internal static class ModUi
         "SummonUndead",
         "SwiftQuiver",
         "SwordStorm",
+        "SylunesViper",
         "SynapticStatic",
         "Telekinesis",
         "ThornyVines",
@@ -331,7 +336,8 @@ internal static class ModUi
         "WizardGraviturgist",
         "WizardTheurgy",
         "WizardWarMagic",
-        "WrathfulSmite"
+        "WrathfulSmite",
+        "YolandesRegalPresence"
     ];
 
     internal static readonly HashSet<BaseDefinition> TabletopDefinitions = [];

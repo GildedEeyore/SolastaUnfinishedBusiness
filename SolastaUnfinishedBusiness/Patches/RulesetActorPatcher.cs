@@ -10,6 +10,7 @@ using SolastaUnfinishedBusiness.Api;
 using SolastaUnfinishedBusiness.Api.GameExtensions;
 using SolastaUnfinishedBusiness.Api.Helpers;
 using SolastaUnfinishedBusiness.Api.LanguageExtensions;
+using SolastaUnfinishedBusiness.Behaviors;
 using SolastaUnfinishedBusiness.Behaviors.Specific;
 using SolastaUnfinishedBusiness.Interfaces;
 using SolastaUnfinishedBusiness.Models;
@@ -393,9 +394,22 @@ public static class RulesetActorPatcher
         }
 
         [UsedImplicitly]
-        public static void Postfix()
+        public static void Postfix(RulesetActor __instance, ref int __result)
         {
             CurrentDamageForm = null;
+
+            //PATCH: support for `SubtractDieFromDamageRolls` (Grave Ground)
+            if (__instance is not RulesetCharacter rulesetCharacter)
+            {
+                return;
+            }
+
+            foreach (var subtractDie in rulesetCharacter.GetSubFeaturesByType<SubtractDieFromDamageRolls>())
+            {
+                __result = Math.Max(0,
+                    __result - RuleDefinitions.RollDie(
+                        subtractDie.DieType, RuleDefinitions.AdvantageType.None, out _, out _));
+            }
         }
     }
 
