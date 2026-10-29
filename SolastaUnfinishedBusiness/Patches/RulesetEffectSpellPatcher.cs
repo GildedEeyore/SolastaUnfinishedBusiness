@@ -323,6 +323,9 @@ public static class RulesetEffectSpellPatcher
         [UsedImplicitly]
         public static void Postfix(RulesetEffectSpell __instance)
         {
+            //PATCH: support for `DeviceSpellLevels` (Staff of Power and Staff of the Magi fixed spell levels)
+            MagicItemsContext.ApplyDeviceSpellLevel(__instance);
+
             __instance.RemainingRounds = __instance.EffectDescription.ComputeRoundsDuration(__instance.EffectLevel);
         }
     }
