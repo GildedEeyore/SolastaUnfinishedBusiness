@@ -771,6 +771,80 @@ internal static class MagicItemsContext
 
     #endregion
 
+    #region Attunement by a Spellcaster
+
+    // items whose attunement list holds every vanilla spellcasting class require attunement by a spellcaster, so
+    // anyone with spell slots can attune to them, including Eldritch Knights and Arcane Tricksters
+    private static readonly CharacterClassDefinition[] SpellcasterClasses =
+        [Bard, Cleric, Druid, Paladin, Ranger, Sorcerer, Warlock, Wizard];
+
+    internal static bool RequiresAttunementBySpellcaster(ItemDefinition itemDefinition)
+    {
+        return itemDefinition.RequiresAttunement &&
+               SpellcasterClasses.All(itemDefinition.RequiredAttunementClasses.Contains);
+    }
+
+    private static bool HasSpellSlots(RulesetCharacterHero hero)
+    {
+        return hero.SpellRepertoires.Any(x =>
+            x.SpellCastingFeature.SpellCastingOrigin is
+                FeatureDefinitionCastSpell.CastingOrigin.Class or FeatureDefinitionCastSpell.CastingOrigin.Subclass &&
+            SharedSpellsContext.MaxSpellLevelOfSpellCastingLevel(x) > 0);
+    }
+
+    // called from the RulesetCharacterHero.EnumerateAttunableItems patch
+    internal static void AddItemsAttunableBySpellcaster(
+        RulesetCharacterHero hero,
+        List<RulesetCharacterHero> heroes,
+        List<RulesetItem> attunableItems,
+        bool considerMyAttunedItems)
+    {
+        if (!HasSpellSlots(hero))
+        {
+            return;
+        }
+
+        var items = new List<RulesetItem>();
+
+        foreach (var owner in heroes)
+        {
+            items.Clear();
+            owner.CharacterInventory.EnumerateAllItems(items);
+
+            foreach (var item in items)
+            {
+                var itemDefinition = item.ItemDefinition;
+
+                if (attunableItems.Contains(item) ||
+                    !itemDefinition.Magical ||
+                    !RequiresAttunementBySpellcaster(itemDefinition) ||
+                    (itemDefinition.RequiresIdentification && !item.Identified) ||
+                    (item.AttunedToCharacter == hero.Name && !considerMyAttunedItems))
+                {
+                    continue;
+                }
+
+                attunableItems.Add(item);
+            }
+        }
+    }
+
+    // called from the GuiItemDefinition.AttunementInfo patch
+    internal static void FormatAttunementBySpellcaster(ItemDefinition itemDefinition, ref string attunementInfo)
+    {
+        if (!RequiresAttunementBySpellcaster(itemDefinition))
+        {
+            return;
+        }
+
+        attunementInfo = Gui.Colorize(
+            Gui.Localize("Equipment/&DeviceRequiresAttunementTitle") +
+            Gui.Format(" ({0})", Gui.Localize("Tooltip/&AttunementBySpellcaster")),
+            "EA7171");
+    }
+
+    #endregion
+
     #region Spell Duelist's Trophy
 
     private static ItemDefinition BuildSpellDuelistsTrophy()

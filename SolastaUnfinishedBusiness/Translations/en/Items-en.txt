@@ -760,3 +760,4 @@ Reaction/&CustomReactionDispellingTouchDescription=You hit {0} with a melee spel
 Reaction/&CustomReactionDispellingTouchReactDescription=Cast Dispel Magic on the hit creature.
 Reaction/&CustomReactionDispellingTouchReactTitle=Dispel
 Reaction/&CustomReactionDispellingTouchTitle=Dispelling Touch
+Tooltip/&AttunementBySpellcaster=Spellcaster
