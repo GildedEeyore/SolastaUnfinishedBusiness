@@ -89,6 +89,7 @@ Condition/&FlightSuspendTitle=Flight Suspended
 ContentPack/&9999Description=The Unfinished Business Pack is a veritable Horn of Plenty (TM)...
 ContentPack/&9999Title=Unfinished Business Pack
 Equipment/&BeltOfRegeneration_Function_Description=Regenerate 5 hit points per round for one minute.
+Equipment/&CloakOfArachnida_Description=This fine garment is made of black silk interwoven with faint, silvery threads. While wearing it, you gain the following benefits.\n<b>Poison Resistance.</b> You have Resistance to Poison damage.\n<b>Spider Climb.</b> You have a Climb Speed equal to your Speed and can move up, down, and across vertical surfaces and along ceilings, while leaving your hands free.\n<b>Spider Walk.</b> You can't be caught in webs of any sort and can move through webs as if they were Difficult Terrain.\n<b>Web.</b> You can cast Web (save DC 13). The web created by the spell fills twice its normal area. Once used, this property can't be used again until the next dawn.
 Equipment/&DLC3_DwarvenWeapon_Dagger+3_CriticalThreshold=Your attacks score a critical hit on an 18, 19 or 20 while you are wielding this weapon and are attuned to it.
 Failure/&CannotAttackTarget=Can't perform attack on this target
 Failure/&FailureFlagCannotTargetUndead=Cannot target Undead creatures

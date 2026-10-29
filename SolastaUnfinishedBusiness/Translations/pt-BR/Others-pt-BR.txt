@@ -89,6 +89,7 @@ Condition/&FlightSuspendTitle=Voo suspenso
 ContentPack/&9999Description=O Pacote de Negócios Inacabados é uma verdadeira Cornualha da Abundância (TM)...
 ContentPack/&9999Title=Pacote de negócios inacabados
 Equipment/&BeltOfRegeneration_Function_Description=Regenera 5 pontos de vida por rodada durante um minuto.
+Equipment/&CloakOfArachnida_Description=Esta fina vestimenta é feita de seda negra entretecida com tênues fios prateados. Enquanto a veste, você recebe os seguintes benefícios.\n<b>Resistência a Veneno.</b> Você tem resistência a dano de veneno.\n<b>Escalada de Aranha.</b> Você tem um deslocamento de escalada igual ao seu deslocamento e pode se mover para cima, para baixo e através de superfícies verticais e pelos tetos, mantendo as mãos livres.\n<b>Andar de Aranha.</b> Você não pode ficar preso em teias de nenhum tipo e pode se mover através de teias como se fossem terreno difícil.\n<b>Teia.</b> Você pode conjurar Web (CD de resistência 13). A teia criada pela magia preenche o dobro de sua área normal. Depois de usada, esta propriedade não pode ser usada novamente até o próximo amanhecer.
 Equipment/&DLC3_DwarvenWeapon_Dagger+3_CriticalThreshold=Seus ataques causam um acerto crítico de 18, 19 ou 20 enquanto você estiver empunhando esta arma e estiver sintonizado com ela.
 Failure/&CannotAttackTarget=Não é possível executar ataque neste alvo
 Failure/&FailureFlagCannotTargetUndead=Não é possível mirar em criaturas mortas-vivas

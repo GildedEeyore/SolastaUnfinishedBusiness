@@ -89,6 +89,7 @@ Condition/&FlightSuspendTitle=Vuelo suspendido
 ContentPack/&9999Description=El paquete Unfinished Business es un auténtico Cuerno de la Abundancia (TM)...
 ContentPack/&9999Title=Paquete de asuntos pendientes
 Equipment/&BeltOfRegeneration_Function_Description=Regenera 5 puntos de vida por ronda durante un minuto.
+Equipment/&CloakOfArachnida_Description=Esta fina prenda está hecha de seda negra entretejida con tenues hilos plateados. Mientras la llevas puesta, obtienes los siguientes beneficios.\n<b>Resistencia al veneno.</b> Tienes resistencia al daño de veneno.\n<b>Trepar como una araña.</b> Tienes una velocidad de trepar igual a tu velocidad y puedes moverte hacia arriba, hacia abajo y a través de superficies verticales y por los techos, dejando las manos libres.\n<b>Andar de araña.</b> No puedes quedar atrapado en telarañas de ningún tipo y puedes moverte a través de ellas como si fueran terreno difícil.\n<b>Telaraña.</b> Puedes lanzar Web (CD de salvación 13). La telaraña creada por el conjuro ocupa el doble de su área normal. Una vez usada, esta propiedad no puede volver a usarse hasta el siguiente amanecer.
 Equipment/&DLC3_DwarvenWeapon_Dagger+3_CriticalThreshold=Tus ataques obtienen un golpe crítico con un 18, 19 o 20 mientras estés usando esta arma y estés en sintonía con ella.
 Failure/&CannotAttackTarget=No se puede realizar el ataque a este objetivo.
 Failure/&FailureFlagCannotTargetUndead=No puede apuntar a criaturas no muertas
