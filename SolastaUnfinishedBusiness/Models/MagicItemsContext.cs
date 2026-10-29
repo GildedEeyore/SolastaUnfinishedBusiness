@@ -876,7 +876,7 @@ internal static class MagicItemsContext
 
         var item = ItemDefinitionBuilder
             .Create(ItemDefinitions.AmuletOfHealth, NAME)
-            .SetGuiPresentation(Category.Item, ItemDefinitions.AmuletOfHealth)
+            .SetGuiPresentation(Category.Item, Sprites.GetSprite(NAME, Resources.SpellDuelistsTrophy, 128))
             .SetMerchantCategory(MerchantCategoryDefinitions.MagicDevice)
             .SetItemRarity(ItemRarity.Rare)
             .MakeMagical()
