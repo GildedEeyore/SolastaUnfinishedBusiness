@@ -89,6 +89,7 @@ Condition/&FlightSuspendTitle=航班暂停
 ContentPack/&9999Description=未完成的业务包是名副其实的丰盛之角 (TM)......
 ContentPack/&9999Title=未竟之业包
 Equipment/&BeltOfRegeneration_Function_Description=每轮恢复 5 点生命值，持续 1 分钟。
+Equipment/&CloakOfArachnida_Description=这件精美的衣物由黑色丝绸织成，其间交织着若隐若现的银色丝线。穿着它时，你获得以下益处。\n<b>毒素抗性。</b>你具有毒素伤害抗性。\n<b>蛛行攀爬。</b>你获得等同于你速度的攀爬速度，并能在垂直表面上上下左右移动以及沿天花板移动，同时双手保持空闲。\n<b>蛛网行走。</b>你不会被任何种类的蛛网困住，并且可以像穿过困难地形一样穿过蛛网。\n<b>蛛网术。</b>你可以施展蛛网术（豁免DC 13）。该法术产生的蛛网覆盖范围为正常的两倍。一旦使用，此特性直到下一个黎明前都不能再次使用。
 Equipment/&DLC3_DwarvenWeapon_Dagger+3_CriticalThreshold=当你使用该武器并对其进行调和时，你的攻击检定会在 18, 19 或 20 点上获得致命一击。
 Failure/&CannotAttackTarget=无法对该目标进行攻击
 Failure/&FailureFlagCannotTargetUndead=无法以亡灵生物为目标

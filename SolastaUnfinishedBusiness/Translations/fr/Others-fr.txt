@@ -89,6 +89,7 @@ Condition/&FlightSuspendTitle=Vol suspendu
 ContentPack/&9999Description=Le Unfinished Business Pack est une véritable Corne d'Abondance (TM)...
 ContentPack/&9999Title=Pack d'affaires inachevées
 Equipment/&BeltOfRegeneration_Function_Description=Régénère 5 points de vie par tour pendant une minute.
+Equipment/&CloakOfArachnida_Description=Ce vêtement raffiné est fait de soie noire entrelacée de fins fils argentés. Tant que vous le portez, vous bénéficiez des avantages suivants.\n<b>Résistance au poison.</b> Vous avez la résistance aux dégâts de poison.\n<b>Pattes d'araignée.</b> Vous avez une vitesse d'escalade égale à votre vitesse et pouvez vous déplacer vers le haut, vers le bas et en travers des surfaces verticales ainsi qu'au plafond, tout en gardant les mains libres.\n<b>Marche arachnéenne.</b> Vous ne pouvez être pris dans aucune toile, quelle qu'elle soit, et pouvez traverser les toiles comme s'il s'agissait d'un terrain difficile.\n<b>Toile.</b> Vous pouvez lancer Web (DD de sauvegarde 13). La toile créée par le sort couvre le double de sa zone normale. Une fois utilisée, cette propriété ne peut plus être utilisée avant l'aube suivante.
 Equipment/&DLC3_DwarvenWeapon_Dagger+3_CriticalThreshold=Vos attaques infligent un coup critique sur un score de 18, 19 ou 20 lorsque vous maniez cette arme et que vous êtes en phase avec elle.
 Failure/&CannotAttackTarget=Impossible d'effectuer une attaque sur cette cible
 Failure/&FailureFlagCannotTargetUndead=Ne peut pas cibler les créatures mortes-vivantes

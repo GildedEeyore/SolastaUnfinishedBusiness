@@ -89,6 +89,7 @@ Condition/&FlightSuspendTitle=運航停止
 ContentPack/&9999Description=Unfinished Business Pack は、まさに Horn of Plenty (TM) です...
 ContentPack/&9999Title=未完成ビジネスパック
 Equipment/&BeltOfRegeneration_Function_Description=1分間、ラウンドごとに5ヒットポイントを回復します。
+Equipment/&CloakOfArachnida_Description=この上質な衣は、かすかな銀糸を織り込んだ黒い絹でできている。着用している間、以下の恩恵を得る。\n<b>毒への抵抗。</b>毒ダメージに対する抵抗を得る。\n<b>蜘蛛の登攀。</b>移動速度に等しい登攀速度を得て、両手を自由にしたまま垂直な面を上下左右に移動したり、天井を移動したりできる。\n<b>蜘蛛の歩み。</b>いかなる種類の蜘蛛の巣にも捕らわれず、蜘蛛の巣を移動困難地形であるかのように通り抜けられる。\n<b>ウェブ。</b>Webを発動できる（セーヴDC13）。この呪文で作られる蜘蛛の巣は通常の2倍の範囲を満たす。一度使用すると、次の夜明けまでこの特性は再使用できない。
 Equipment/&DLC3_DwarvenWeapon_Dagger+3_CriticalThreshold=この武器を使用し、それに同調している間、攻撃は 18、19、または 20 でクリティカル ヒットを獲得します。
 Failure/&CannotAttackTarget=このターゲットに攻撃を実行できません
 Failure/&FailureFlagCannotTargetUndead=アンデッドクリーチャーをターゲットにできない
