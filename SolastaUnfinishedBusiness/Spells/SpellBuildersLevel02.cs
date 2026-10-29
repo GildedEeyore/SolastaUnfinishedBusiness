@@ -495,6 +495,12 @@ internal static partial class SpellBuilders
                     .Build())
             .AddToDB();
 
+        // Cloak of Arachnida casts Web (save DC 13) instead of Pass Without Trace
+        var cloakOfArachnidaDevice = ItemDefinitions.CloakOfArachnida.UsableDeviceDescription;
+
+        cloakOfArachnidaDevice.saveDC = 13;
+        cloakOfArachnidaDevice.DeviceFunctions[0].spellDefinition = spell;
+
         return spell;
     }
 
