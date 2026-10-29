@@ -2819,6 +2819,10 @@ internal static partial class DatabaseHelper
     {
         internal static ItemDefinition ArcaneFocusOrb { get; } = GetDefinition<ItemDefinition>("ArcaneFocusOrb");
 
+        internal static ItemDefinition Dulcimer { get; } = GetDefinition<ItemDefinition>("Dulcimer");
+
+        internal static ItemDefinition Lute { get; } = GetDefinition<ItemDefinition>("Lute");
+
         internal static ItemDefinition StaffOfFire { get; } =
             GetDefinition<ItemDefinition>("StaffOfFire");
 
@@ -4267,6 +4271,8 @@ internal static partial class DatabaseHelper
             GetDefinition<SpellDefinition>("WallOfFireRing_Outer");
 
         internal static SpellDefinition WallOfForce { get; } = GetDefinition<SpellDefinition>("WallOfForce");
+
+        internal static SpellDefinition WallOfThorns { get; } = GetDefinition<SpellDefinition>("WallOfThorns");
 
         internal static SpellDefinition WallOfThornsWallLine { get; } =
             GetDefinition<SpellDefinition>("WallOfThornsWallLine");
