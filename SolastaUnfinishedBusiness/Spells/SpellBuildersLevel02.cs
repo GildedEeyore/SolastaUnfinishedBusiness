@@ -496,10 +496,20 @@ internal static partial class SpellBuilders
             .AddToDB();
 
         // Cloak of Arachnida casts Web (save DC 13) instead of Pass Without Trace
+        // its web fills twice the normal area so use a 30 ft cube instead of a 20 ft one
+        var spellWebCloakOfArachnida = SpellDefinitionBuilder
+            .Create(spell, $"{NAME}CloakOfArachnida")
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create(spell.EffectDescription)
+                    .SetTargetingData(Side.All, RangeType.Distance, 12, TargetType.Cube, 6, 1)
+                    .Build())
+            .AddToDB();
+
         var cloakOfArachnidaDevice = ItemDefinitions.CloakOfArachnida.UsableDeviceDescription;
 
         cloakOfArachnidaDevice.saveDC = 13;
-        cloakOfArachnidaDevice.DeviceFunctions[0].spellDefinition = spell;
+        cloakOfArachnidaDevice.DeviceFunctions[0].spellDefinition = spellWebCloakOfArachnida;
 
         return spell;
     }
