@@ -8,6 +8,7 @@ using SolastaUnfinishedBusiness.Behaviors;
 using SolastaUnfinishedBusiness.Behaviors.Specific;
 using SolastaUnfinishedBusiness.Builders;
 using SolastaUnfinishedBusiness.Builders.Features;
+using SolastaUnfinishedBusiness.Classes;
 using SolastaUnfinishedBusiness.CustomUI;
 using SolastaUnfinishedBusiness.Properties;
 using SolastaUnfinishedBusiness.Interfaces;
@@ -35,6 +36,16 @@ internal static class MagicItemsContext
     internal static ItemDefinition StaffOfPower;
     internal static ItemDefinition StaffOfTheMagi;
     internal static ItemDefinition SunBlade;
+    internal static ItemDefinition AnstruthHarp;
+    internal static ItemDefinition CanaithMandolin;
+    internal static ItemDefinition CliLyre;
+    internal static ItemDefinition DossLute;
+    internal static ItemDefinition FochlucanBandore;
+    internal static ItemDefinition MacFuirmidhCittern;
+    internal static ItemDefinition OllamhHarp;
+    internal static ItemDefinition SpellDuelistsTrophy;
+
+    private static FeatureDefinition _featureSpellDuelistsTrophyHelpingHand;
 
     private static FeatureDefinitionPower _powerStaffOfTheMagiRetributiveStrike;
 
@@ -49,10 +60,14 @@ internal static class MagicItemsContext
         StaffOfPower = BuildStaffOfPower();
         StaffOfTheMagi = BuildStaffOfTheMagi();
         SunBlade = BuildSunBlade();
+        BuildInstrumentsOfTheBards();
+        SpellDuelistsTrophy = BuildSpellDuelistsTrophy();
 
         foreach (var item in new[]
                  {
-                     OrbOfSorcery, RobeOfTheArchmagi, SpellguardShield, StaffOfPower, StaffOfTheMagi, SunBlade
+                     OrbOfSorcery, RobeOfTheArchmagi, SpellguardShield, StaffOfPower, StaffOfTheMagi, SunBlade,
+                     AnstruthHarp, CanaithMandolin, CliLyre, DossLute, FochlucanBandore, MacFuirmidhCittern,
+                     OllamhHarp, SpellDuelistsTrophy
                  })
         {
             item.inDungeonEditor = Main.Settings.AddNewWeaponsAndRecipesToEditor;
@@ -64,6 +79,14 @@ internal static class MagicItemsContext
         MerchantContext.AddItem(StaffOfPower, ShopItemType.MagicItemVeryRare);
         MerchantContext.AddItem(RobeOfTheArchmagi, ShopItemType.MagicItemLegendary);
         MerchantContext.AddItem(StaffOfTheMagi, ShopItemType.MagicItemLegendary);
+        MerchantContext.AddItem(DossLute, ShopItemType.MagicItemUncommon);
+        MerchantContext.AddItem(FochlucanBandore, ShopItemType.MagicItemUncommon);
+        MerchantContext.AddItem(MacFuirmidhCittern, ShopItemType.MagicItemUncommon);
+        MerchantContext.AddItem(CanaithMandolin, ShopItemType.MagicItemRare);
+        MerchantContext.AddItem(CliLyre, ShopItemType.MagicItemRare);
+        MerchantContext.AddItem(SpellDuelistsTrophy, ShopItemType.MagicItemRare);
+        MerchantContext.AddItem(AnstruthHarp, ShopItemType.MagicItemVeryRare);
+        MerchantContext.AddItem(OllamhHarp, ShopItemType.MagicItemLegendary);
     }
 
     #region Orb of Sorcery
@@ -665,6 +688,285 @@ internal static class MagicItemsContext
             if (rulesetCharacter.GetOriginalHero() is { } hero)
             {
                 hero.CharacterInventory.DestroyItem(staff);
+            }
+        }
+    }
+
+    #endregion
+
+    #region Instruments of the Bards
+
+    // the game has no harp, lyre, mandolin, bandore or cittern, so the lute-family instruments use the Lute and the
+    // harps and the lyre use the Dulcimer, the only other string instrument
+    private static void BuildInstrumentsOfTheBards()
+    {
+        var sl = SpellDefinitions.ProtectionFromEnergyLightning;
+        var sf = SpellDefinitions.ProtectionFromEnergyFire;
+
+        // Stone Shape is left out of the Cli Lyre, Speak with Animals of the Fochlucan Bandore and Control Weather of
+        // the Ollamh Harp as none of these spells is in the game or this mod
+        AnstruthHarp = BuildInstrument("AnstruthHarp", ItemDefinitions.Dulcimer, ItemRarity.VeryRare, 40000,
+            new DeviceSpellLevels((SpellDefinitions.CureWounds, 5)),
+            SpellDefinitions.CureWounds, SpellDefinitions.IceStorm, SpellDefinitions.WallOfThorns);
+        CanaithMandolin = BuildInstrument("CanaithMandolin", ItemDefinitions.Lute, ItemRarity.Rare, 4000,
+            new DeviceSpellLevels((SpellDefinitions.CureWounds, 3)),
+            SpellDefinitions.CureWounds, SpellDefinitions.DispelMagic, sl);
+        CliLyre = BuildInstrument("CliLyre", ItemDefinitions.Dulcimer, ItemRarity.Rare, 4000, null,
+            SpellDefinitions.WallOfFire, SpellDefinitions.WindWall);
+        DossLute = BuildInstrument("DossLute", ItemDefinitions.Lute, ItemRarity.Uncommon, 400, null,
+            SpellDefinitions.AnimalFriendship, sf, SpellDefinitions.ProtectionFromPoison);
+        FochlucanBandore = BuildInstrument("FochlucanBandore", ItemDefinitions.Lute, ItemRarity.Uncommon, 400, null,
+            SpellDefinitions.Entangle, SpellDefinitions.FaerieFire, SpellDefinitions.Shillelagh);
+        MacFuirmidhCittern = BuildInstrument("MacFuirmidhCittern", ItemDefinitions.Lute, ItemRarity.Uncommon, 400,
+            null,
+            SpellDefinitions.Barkskin, SpellDefinitions.CureWounds, SpellDefinitions.FogCloud);
+        OllamhHarp = BuildInstrument("OllamhHarp", ItemDefinitions.Dulcimer, ItemRarity.Legendary, 200000, null,
+            SpellDefinitions.Confusion, SpellDefinitions.FireStorm);
+    }
+
+    private static ItemDefinition BuildInstrument(
+        string name,
+        ItemDefinition baseItem,
+        ItemRarity rarity,
+        int gold,
+        DeviceSpellLevels deviceSpellLevels,
+        params SpellDefinition[] spells)
+    {
+        // each spell can be cast once from the instrument, and comes back at the next dawn
+        var functions = new[]
+            {
+                SpellDefinitions.Fly, SpellDefinitions.Invisibility, SpellDefinitions.Levitate,
+                SpellDefinitions.ProtectionFromEvilGood
+            }
+            .Concat(spells)
+            .Select(spell => new DeviceFunctionDescriptionBuilder()
+                .SetUsage(useAffinity: DeviceFunctionDescription.FunctionUseAffinity.IterationPerRecharge)
+                .SetSpell(spell)
+                .Build())
+            .ToArray();
+
+        var builder = ItemDefinitionBuilder
+            .Create(baseItem, name)
+            .SetGuiPresentation(Category.Item, baseItem)
+            .SetMerchantCategory(MerchantCategoryDefinitions.MagicDevice)
+            .SetItemRarity(rarity)
+            .MakeMagical()
+            .SetRequiresIdentification(false)
+            .RequireAttunement(Bard)
+            .SetGold(gold)
+            .SetUsableDeviceDescription(
+                new UsableDeviceDescriptionBuilder()
+                    .SetSaveDc(EffectHelpers.BasedOnUser)
+                    .SetMagicAttackBonus(EffectHelpers.BasedOnUser)
+                    .AddFunctions(functions)
+                    .Build());
+
+        if (deviceSpellLevels != null)
+        {
+            builder.AddCustomSubFeatures(deviceSpellLevels);
+        }
+
+        return builder.AddToDB();
+    }
+
+    #endregion
+
+    #region Attunement by a Spellcaster
+
+    // items whose attunement list holds every vanilla spellcasting class require attunement by a spellcaster, so
+    // anyone with spell slots can attune to them, including Eldritch Knights and Arcane Tricksters
+    private static readonly CharacterClassDefinition[] SpellcasterClasses =
+        [Bard, Cleric, Druid, Paladin, Ranger, Sorcerer, Warlock, Wizard];
+
+    internal static bool RequiresAttunementBySpellcaster(ItemDefinition itemDefinition)
+    {
+        return itemDefinition.RequiresAttunement &&
+               SpellcasterClasses.All(itemDefinition.RequiredAttunementClasses.Contains);
+    }
+
+    private static bool HasSpellSlots(RulesetCharacterHero hero)
+    {
+        return hero.SpellRepertoires.Any(x =>
+            x.SpellCastingFeature.SpellCastingOrigin is
+                FeatureDefinitionCastSpell.CastingOrigin.Class or FeatureDefinitionCastSpell.CastingOrigin.Subclass &&
+            SharedSpellsContext.MaxSpellLevelOfSpellCastingLevel(x) > 0);
+    }
+
+    // called from the RulesetCharacterHero.EnumerateAttunableItems patch
+    internal static void AddItemsAttunableBySpellcaster(
+        RulesetCharacterHero hero,
+        List<RulesetCharacterHero> heroes,
+        List<RulesetItem> attunableItems,
+        bool considerMyAttunedItems)
+    {
+        if (!HasSpellSlots(hero))
+        {
+            return;
+        }
+
+        var items = new List<RulesetItem>();
+
+        foreach (var owner in heroes)
+        {
+            items.Clear();
+            owner.CharacterInventory.EnumerateAllItems(items);
+
+            foreach (var item in items)
+            {
+                var itemDefinition = item.ItemDefinition;
+
+                if (attunableItems.Contains(item) ||
+                    !itemDefinition.Magical ||
+                    !RequiresAttunementBySpellcaster(itemDefinition) ||
+                    (itemDefinition.RequiresIdentification && !item.Identified) ||
+                    (item.AttunedToCharacter == hero.Name && !considerMyAttunedItems))
+                {
+                    continue;
+                }
+
+                attunableItems.Add(item);
+            }
+        }
+    }
+
+    // called from the GuiItemDefinition.AttunementInfo patch
+    internal static void FormatAttunementBySpellcaster(ItemDefinition itemDefinition, ref string attunementInfo)
+    {
+        if (!RequiresAttunementBySpellcaster(itemDefinition))
+        {
+            return;
+        }
+
+        attunementInfo = Gui.Colorize(
+            Gui.Localize("Equipment/&DeviceRequiresAttunementTitle") +
+            Gui.Format(" ({0})", Gui.Localize("Tooltip/&AttunementBySpellcaster")),
+            "EA7171");
+    }
+
+    #endregion
+
+    #region Spell Duelist's Trophy
+
+    private static ItemDefinition BuildSpellDuelistsTrophy()
+    {
+        const string NAME = "SpellDuelistsTrophy";
+
+        var powerDispellingTouch = FeatureDefinitionPowerBuilder
+            .Create($"Power{NAME}DispellingTouch")
+            .SetGuiPresentation(Category.Feature, SpellDefinitions.DispelMagic)
+            .SetUsesFixed(ActivationTime.NoCost, RechargeRate.Dawn)
+            .SetShowCasting(false)
+            .AddToDB();
+
+        powerDispellingTouch.AddCustomSubFeatures(
+            ModifyPowerVisibility.Hidden,
+            new MagicEffectFinishedByMeDispellingTouch(powerDispellingTouch));
+
+        _featureSpellDuelistsTrophyHelpingHand = FeatureDefinitionBuilder
+            .Create($"Feature{NAME}HelpingHand")
+            .SetGuiPresentation(Category.Feature)
+            .AddToDB();
+
+        var attunementClasses = new[]
+            {
+                Bard, Cleric, Druid, Paladin, Ranger, Sorcerer, Warlock, Wizard, InventorClass.Class
+            }
+            .Where(x => x)
+            .ToArray();
+
+        var item = ItemDefinitionBuilder
+            .Create(ItemDefinitions.AmuletOfHealth, NAME)
+            .SetGuiPresentation(Category.Item, Sprites.GetSprite(NAME, Resources.SpellDuelistsTrophy, 128))
+            .SetMerchantCategory(MerchantCategoryDefinitions.MagicDevice)
+            .SetItemRarity(ItemRarity.Rare)
+            .MakeMagical()
+            .SetRequiresIdentification(false)
+            .RequireAttunement(attunementClasses)
+            .SetGold(4000)
+            .SetStaticProperties(
+                BuildFrom(powerDispellingTouch, false),
+                BuildFrom(_featureSpellDuelistsTrophyHelpingHand, false))
+            .AddToDB();
+
+        return item;
+    }
+
+    // called on RulesetCharacter.IsComponentSomaticValid
+    internal static void ValidateHelpingHand(
+        RulesetCharacter caster, SpellDefinition spell, ref bool result, ref string failure)
+    {
+        // cantrips don't use a spell slot
+        if (result ||
+            !_featureSpellDuelistsTrophyHelpingHand ||
+            spell.SpellLevel == 0 ||
+            !caster.HasAnyFeature(_featureSpellDuelistsTrophyHelpingHand))
+        {
+            return;
+        }
+
+        result = true;
+        failure = string.Empty;
+    }
+
+    private sealed class MagicEffectFinishedByMeDispellingTouch(FeatureDefinitionPower powerDispellingTouch)
+        : IMagicEffectFinishedByMe
+    {
+        private const string DispellingTouch = "DispellingTouch";
+        private const int DispelMagicSlotLevel = 3;
+
+        public IEnumerator OnMagicEffectFinishedByMe(
+            CharacterAction action,
+            GameLocationCharacter attacker,
+            List<GameLocationCharacter> targets)
+        {
+            // only a hit with a melee spell attack
+            if (action is not CharacterActionCastSpell { Countered: false, ExecutionFailed: false } actionCastSpell ||
+                actionCastSpell.ActiveSpell.EffectDescription.RangeType != RangeType.MeleeHit ||
+                actionCastSpell.AttackRollOutcome is not (RollOutcome.Success or RollOutcome.CriticalSuccess))
+            {
+                yield break;
+            }
+
+            var rulesetAttacker = attacker.RulesetCharacter;
+            var usablePower = PowerProvider.Get(powerDispellingTouch, rulesetAttacker);
+
+            if (rulesetAttacker is not { IsDeadOrDyingOrUnconscious: false } ||
+                rulesetAttacker.GetRemainingUsesOfPower(usablePower) == 0)
+            {
+                yield break;
+            }
+
+            var target = targets.FirstOrDefault(x => x.RulesetCharacter is { IsDeadOrDyingOrUnconscious: false });
+
+            if (target == null)
+            {
+                yield break;
+            }
+
+            yield return attacker.MyReactToDoNothing(
+                ExtraActionId.DoNothingFree,
+                attacker,
+                DispellingTouch,
+                $"CustomReaction{DispellingTouch}Description".Formatted(Category.Reaction, target.Name),
+                ReactionValidated);
+
+            yield break;
+
+            void ReactionValidated()
+            {
+                rulesetAttacker.UsePower(usablePower);
+                rulesetAttacker.LogCharacterUsedPower(powerDispellingTouch);
+
+                var actionParams = new CharacterActionParams(attacker, ActionDefinitions.Id.CastNoCost)
+                {
+                    ActionModifiers = { new ActionModifier() }, TargetCharacters = { target }
+                };
+
+                attacker.MyExecuteActionCastNoCost(
+                    SpellDefinitions.DispelMagic,
+                    DispelMagicSlotLevel,
+                    actionParams,
+                    actionCastSpell.ActiveSpell.SpellRepertoire);
             }
         }
     }
