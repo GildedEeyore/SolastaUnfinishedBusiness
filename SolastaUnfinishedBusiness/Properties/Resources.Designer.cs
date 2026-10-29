@@ -5781,5 +5781,65 @@ namespace SolastaUnfinishedBusiness.Properties {
                 return ((byte[])(obj));
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] OrbOfSorcery {
+            get {
+                object obj = ResourceManager.GetObject("OrbOfSorcery", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] RobeOfTheArchmagi {
+            get {
+                object obj = ResourceManager.GetObject("RobeOfTheArchmagi", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] SpellguardShield {
+            get {
+                object obj = ResourceManager.GetObject("SpellguardShield", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] StaffOfPower {
+            get {
+                object obj = ResourceManager.GetObject("StaffOfPower", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] StaffOfTheMagi {
+            get {
+                object obj = ResourceManager.GetObject("StaffOfTheMagi", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] SunBlade {
+            get {
+                object obj = ResourceManager.GetObject("SunBlade", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
     }
 }

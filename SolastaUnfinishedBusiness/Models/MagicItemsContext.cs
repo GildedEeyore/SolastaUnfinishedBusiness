@@ -8,8 +8,10 @@ using SolastaUnfinishedBusiness.Behaviors;
 using SolastaUnfinishedBusiness.Behaviors.Specific;
 using SolastaUnfinishedBusiness.Builders;
 using SolastaUnfinishedBusiness.Builders.Features;
+using SolastaUnfinishedBusiness.CustomUI;
+using SolastaUnfinishedBusiness.Properties;
 using SolastaUnfinishedBusiness.Interfaces;
-using UnityEngine;
+using Color = UnityEngine.Color;
 using static RuleDefinitions;
 using static FeatureDefinitionSavingThrowAffinity;
 using static SolastaUnfinishedBusiness.Api.DatabaseHelper;
@@ -93,7 +95,7 @@ internal static class MagicItemsContext
 
         var item = ItemDefinitionBuilder
             .Create(ItemDefinitions.ArcaneFocusOrb, NAME)
-            .SetGuiPresentation(Category.Item, ItemDefinitions.ArcaneFocusOrb)
+            .SetGuiPresentation(Category.Item, Sprites.GetSprite(NAME, Resources.OrbOfSorcery, 128))
             .SetMerchantCategory(MerchantCategoryDefinitions.MagicDevice)
             .SetItemRarity(ItemRarity.Uncommon)
             .MakeMagical()
@@ -132,7 +134,7 @@ internal static class MagicItemsContext
 
         var item = ItemDefinitionBuilder
             .Create(ItemDefinitions.WizardClothes_Alternate, NAME)
-            .SetGuiPresentation(Category.Item, ItemDefinitions.WizardClothes_Alternate)
+            .SetGuiPresentation(Category.Item, Sprites.GetSprite(NAME, Resources.RobeOfTheArchmagi, 128))
             .SetMerchantCategory(MerchantCategoryDefinitions.MagicDevice)
             .SetItemRarity(ItemRarity.Legendary)
             .MakeMagical()
@@ -171,7 +173,7 @@ internal static class MagicItemsContext
 
         var item = ItemDefinitionBuilder
             .Create(ItemDefinitions.ShieldPlus2, NAME)
-            .SetGuiPresentation(Category.Item, ItemDefinitions.ShieldPlus2)
+            .SetGuiPresentation(Category.Item, Sprites.GetSprite(NAME, Resources.SpellguardShield, 128))
             .SetItemRarity(ItemRarity.VeryRare)
             .MakeMagical()
             .SetRequiresIdentification(false)
@@ -240,7 +242,7 @@ internal static class MagicItemsContext
 
         var item = ItemDefinitionBuilder
             .Create(baseItem, NAME)
-            .SetGuiPresentation(Category.Item, baseItem)
+            .SetGuiPresentation(Category.Item, Sprites.GetSprite(NAME, Resources.SunBlade, 128))
             .SetItemRarity(ItemRarity.Rare)
             .MakeMagical()
             .SetRequiresIdentification(false)
@@ -318,6 +320,7 @@ internal static class MagicItemsContext
             new DeviceSpellLevels(
                 (SpellDefinitions.Fireball, 5),
                 (SpellDefinitions.LightningBolt, 5)),
+            Resources.StaffOfPower,
             WeaponPlus2,
             BuildFrom(FeatureDefinitionAttributeModifiers.AttributeModifierArmorPlus2, false),
             BuildFrom(savingThrowAffinity, false),
@@ -375,6 +378,7 @@ internal static class MagicItemsContext
             new DeviceSpellLevels(
                 (SpellDefinitions.Fireball, 7),
                 (SpellDefinitions.LightningBolt, 7)),
+            Resources.StaffOfTheMagi,
             WeaponPlus2,
             BuildFrom(FeatureDefinitionSavingThrowAffinitys.SavingThrowAffinitySpellResistance, false),
             BuildFrom(magicAffinity, false),
@@ -389,13 +393,14 @@ internal static class MagicItemsContext
         int gold,
         UsableDeviceDescription usableDeviceDescription,
         DeviceSpellLevels deviceSpellLevels,
+        byte[] icon,
         params ItemPropertyDescription[] properties)
     {
         var baseItem = ItemDefinitions.StaffOfFire;
 
         return ItemDefinitionBuilder
             .Create(baseItem, name)
-            .SetGuiPresentation(Category.Item, baseItem)
+            .SetGuiPresentation(Category.Item, Sprites.GetSprite(name, icon, 128))
             .SetItemRarity(rarity)
             .MakeMagical()
             .SetRequiresIdentification(false)
