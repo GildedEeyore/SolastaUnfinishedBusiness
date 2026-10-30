@@ -82,11 +82,22 @@ public sealed class DomainGrave : AbstractSubclass
 
         featurePullOfDeath.AddCustomSubFeatures(new CustomBehaviorPullOfDeath(featurePullOfDeath));
 
+        // Spare the Dying only gets its 2024 range on late load, so set it here: 15 feet on any creature,
+        // doubling at levels 5, 11 and 17 like the cantrip
+        var effectReturnToLife = EffectDescriptionBuilder
+            .Create(SpareTheDying.EffectDescription)
+            .Build();
+
+        effectReturnToLife.targetSide = Side.All;
+        effectReturnToLife.rangeType = RangeType.Distance;
+        effectReturnToLife.rangeParameter = 3;
+
         var powerReturnToLife = FeatureDefinitionPowerBuilder
             .Create($"Power{Name}ReturnToLife")
             .SetGuiPresentation(Category.Feature, SpareTheDying)
             .SetUsesFixed(ActivationTime.BonusAction)
-            .SetEffectDescription(SpareTheDying.EffectDescription)
+            .SetEffectDescription(effectReturnToLife)
+            .AddCustomSubFeatures(Tabletop2024Context.ModifyEffectDescriptionSpareTheDying.Instance)
             .AddToDB();
 
         // healing dice are maximized on RulesetCharacter.RollAndHeal
