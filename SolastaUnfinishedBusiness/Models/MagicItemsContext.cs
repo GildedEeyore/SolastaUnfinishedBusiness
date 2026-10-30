@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using SolastaUnfinishedBusiness.Api.GameExtensions;
@@ -456,6 +456,28 @@ internal static class MagicItemsContext
             level = 0;
 
             return false;
+        }
+    }
+
+    // called from the ItemDefinition.FillTags patch
+    // the staffs cast a dozen spells each and their effect tags made the tooltip run off screen
+    internal static void RemoveStaffSpellTags(
+        ItemDefinition itemDefinition, Dictionary<string, TagsDefinitions.Criticity> tagsMap)
+    {
+        if (itemDefinition != StaffOfPower && itemDefinition != StaffOfTheMagi)
+        {
+            return;
+        }
+
+        var spellTags = new Dictionary<string, TagsDefinitions.Criticity>();
+        var weaponTags = new Dictionary<string, TagsDefinitions.Criticity>();
+
+        itemDefinition.UsableDeviceDescription.FillTags(spellTags);
+        itemDefinition.WeaponDescription.FillTags(weaponTags);
+
+        foreach (var tag in spellTags.Keys.Where(tag => !weaponTags.ContainsKey(tag)))
+        {
+            tagsMap.Remove(tag);
         }
     }
 
