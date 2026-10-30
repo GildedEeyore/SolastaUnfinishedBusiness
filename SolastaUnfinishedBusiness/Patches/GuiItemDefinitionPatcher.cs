@@ -28,6 +28,19 @@ public static class GuiItemDefinitionPatcher
         }
     }
     
+    [HarmonyPatch(typeof(GuiItemDefinition), nameof(GuiItemDefinition.AttunementInfo), MethodType.Getter)]
+    [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
+    [UsedImplicitly]
+    public static class AttunementInfo_Getter_Patch
+    {
+        [UsedImplicitly]
+        public static void Postfix(GuiItemDefinition __instance, ref string __result)
+        {
+            //PATCH: shows `Spellcaster` instead of the class list on items that require attunement by a spellcaster
+            MagicItemsContext.FormatAttunementBySpellcaster(__instance.ItemDefinition, ref __result);
+        }
+    }
+
     [HarmonyPatch(typeof(GuiItemDefinition), nameof(GuiItemDefinition.Title), MethodType.Getter)]
     [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
     [UsedImplicitly]
