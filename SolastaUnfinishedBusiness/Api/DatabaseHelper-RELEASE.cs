@@ -893,6 +893,9 @@ internal static partial class DatabaseHelper
 
     internal static class FactionStatusDefinitions
     {
+        internal static FactionStatusDefinition LivingLegend { get; } =
+            GetDefinition<FactionStatusDefinition>("LivingLegend");
+
         internal static FactionStatusDefinition Alliance { get; } = GetDefinition<FactionStatusDefinition>("Alliance");
 
         internal static FactionStatusDefinition Brotherhood { get; } =
@@ -1199,6 +1202,9 @@ internal static partial class DatabaseHelper
 
     internal static class FeatureDefinitionAttributeModifiers
     {
+        internal static FeatureDefinitionAttributeModifier AttributeModifierArmorPlus2 { get; } =
+            GetDefinition<FeatureDefinitionAttributeModifier>("AttributeModifierArmor+2");
+
         internal static FeatureDefinitionAttributeModifier AttributeModifierTraditionSurvivalDefensiveStance { get; } =
             GetDefinition<FeatureDefinitionAttributeModifier>("AttributeModifierTraditionSurvivalDefensiveStance");
 
@@ -1935,6 +1941,9 @@ internal static partial class DatabaseHelper
 
     internal static class FeatureDefinitionPowers
     {
+        internal static FeatureDefinitionPower PowerSorcererCreateSorceryPoints { get; } =
+            GetDefinition<FeatureDefinitionPower>("PowerSorcererCreateSorceryPoints");
+
         internal static FeatureDefinitionPower PowerMonkReturnMissile { get; } =
             GetDefinition<FeatureDefinitionPower>("PowerMonkReturnMissile");
 
@@ -2808,6 +2817,8 @@ internal static partial class DatabaseHelper
 
     internal static class ItemDefinitions
     {
+        internal static ItemDefinition ArcaneFocusOrb { get; } = GetDefinition<ItemDefinition>("ArcaneFocusOrb");
+
         internal static ItemDefinition StaffOfFire { get; } =
             GetDefinition<ItemDefinition>("StaffOfFire");
 

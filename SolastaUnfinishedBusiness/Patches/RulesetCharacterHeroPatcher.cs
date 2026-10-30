@@ -1477,6 +1477,9 @@ public static class RulesetCharacterHeroPatcher
             RulesetDeviceFunction function,
             int additionalCharges)
         {
+            //PATCH: Staff of Power and Staff of the Magi roll a d20 when their last charge is expended
+            MagicItemsContext.OnDeviceFunctionUsed(__instance, usableDevice, function);
+
             //PATCH: enables `PowerPoolDevice` to consume usage for power pool
             var feature = PowerPoolDevice.GetFromRulesetItem(__instance, usableDevice);
 

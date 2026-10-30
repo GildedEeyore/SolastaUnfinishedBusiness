@@ -609,7 +609,14 @@ internal static class CraftingAndItems
                     },
                     UI.Width(30f));
 
-                UI.Label(GuiItemTweaks.FormatTitle(item), UI.AutoWidth());
+                var title = GuiItemTweaks.FormatTitle(item);
+
+                if (ModUi.TabletopDefinitionNames.Contains(item.Name))
+                {
+                    title += " \u00a9".Grey(); // copyright symbol
+                }
+
+                UI.Label(title, UI.AutoWidth());
             }
         }
     }

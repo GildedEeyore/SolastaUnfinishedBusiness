@@ -1,15 +1,32 @@
-﻿#if DEBUG
+﻿using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using HarmonyLib;
 using JetBrains.Annotations;
+using SolastaUnfinishedBusiness.Models;
+#if DEBUG
 using static SolastaUnfinishedBusiness.DataMiner.ItemDefinitionVerification;
+#endif
 
 namespace SolastaUnfinishedBusiness.Patches;
 
-//PATCH: These patches are for item usage diagnostics
 [UsedImplicitly]
 public static class ItemDefinitionPatcher
 {
+    //PATCH: keeps the Staff of Power and Staff of the Magi tooltips short enough to fit on screen
+    [HarmonyPatch(typeof(ItemDefinition), nameof(ItemDefinition.FillTags))]
+    [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
+    [UsedImplicitly]
+    public static class FillTags_Patch
+    {
+        [UsedImplicitly]
+        public static void Postfix(ItemDefinition __instance, Dictionary<string, TagsDefinitions.Criticity> tagsMap)
+        {
+            MagicItemsContext.RemoveStaffSpellTags(__instance, tagsMap);
+        }
+    }
+
+#if DEBUG
+    //PATCH: These patches are for item usage diagnostics
     [HarmonyPatch(typeof(ItemDefinition), nameof(ItemDefinition.ArmorDescription), MethodType.Getter)]
     [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
     [UsedImplicitly]
@@ -177,5 +194,5 @@ public static class ItemDefinitionPatcher
             VerifyUsage(__instance, __instance.IsDocument, ref __result);
         }
     }
-}
 #endif
+}

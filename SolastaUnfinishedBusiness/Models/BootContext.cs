@@ -84,6 +84,9 @@ internal static class BootContext
         // Theurgy copies cleric domain features, including the ones Level 20 adds to domains
         WizardTheurgy.LoadDomainFeatures();
 
+        // Magic items cast spells added by this mod, so they load after all spells are built
+        MagicItemsContext.Load();
+
         // Item Options must be loaded after Item Crafting
         ItemCraftingMerchantContext.Load();
         RecipeHelper.AddRecipeIcons();
