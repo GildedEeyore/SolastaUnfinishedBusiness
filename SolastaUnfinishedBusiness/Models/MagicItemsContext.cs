@@ -165,7 +165,7 @@ internal static class MagicItemsContext
 
         var featureSpellAttackDisadvantage = FeatureDefinitionBuilder
             .Create($"Feature{NAME}")
-            .SetGuiPresentation(NAME, Category.Item)
+            .SetGuiPresentation(Category.Feature)
             .AddToDB();
 
         featureSpellAttackDisadvantage.AddCustomSubFeatures(
@@ -279,7 +279,7 @@ internal static class MagicItemsContext
 
         var savingThrowAffinity = FeatureDefinitionSavingThrowAffinityBuilder
             .Create($"SavingThrowAffinity{NAME}")
-            .SetGuiPresentation(NAME, Category.Item)
+            .SetGuiPresentation(Category.Feature)
             .SetModifiers(ModifierType.AddDice, DieType.D1, 2, false,
                 AttributeDefinitions.Strength,
                 AttributeDefinitions.Dexterity,
@@ -291,7 +291,7 @@ internal static class MagicItemsContext
 
         var magicAffinity = FeatureDefinitionMagicAffinityBuilder
             .Create($"MagicAffinity{NAME}")
-            .SetGuiPresentation(NAME, Category.Item)
+            .SetGuiPresentation(Category.Feature)
             .SetCastingModifiers(2)
             .AddToDB();
 
@@ -335,7 +335,7 @@ internal static class MagicItemsContext
 
         var magicAffinity = FeatureDefinitionMagicAffinityBuilder
             .Create($"MagicAffinity{NAME}")
-            .SetGuiPresentation(NAME, Category.Item)
+            .SetGuiPresentation(Category.Feature)
             .SetCastingModifiers(2)
             .AddToDB();
 
@@ -478,6 +478,44 @@ internal static class MagicItemsContext
         foreach (var tag in spellTags.Keys.Where(tag => !weaponTags.ContainsKey(tag)))
         {
             tagsMap.Remove(tag);
+        }
+    }
+
+    // called from the TooltipFeatureDeviceFunctionsEnumerator.Bind patch
+    // lists the staff spells on one wrapped line instead of one line each so the tooltip fits on screen
+    internal static void CompactStaffFunctions(TooltipFeatureDeviceFunctionsEnumerator enumerator, ITooltip tooltip)
+    {
+        if (tooltip.DataProvider is not IItemDefinitionProvider { ItemDefinition: var itemDefinition } ||
+            (itemDefinition != StaffOfPower && itemDefinition != StaffOfTheMagi) ||
+            !enumerator.gameObject.activeSelf ||
+            !enumerator.functionsTable.gameObject.activeSelf)
+        {
+            return;
+        }
+
+        var functions = itemDefinition.UsableDeviceDescription.DeviceFunctions;
+        var spells = functions
+            .Where(x => x.Type == DeviceFunctionDescription.FunctionType.Spell)
+            .Select(x => Gui.Format("Tooltip/&StaffSpellFormat", x.SpellDefinition.FormatTitle(),
+                x.UseAmount.ToString()));
+        var lines = new List<string> { Gui.Format("Tooltip/&StaffSpellsFormat", string.Join(", ", spells)) };
+
+        lines.AddRange(functions
+            .Where(x => x.Type == DeviceFunctionDescription.FunctionType.Power)
+            .Select(x => x.FeatureDefinitionPower.FormatTitle()));
+
+        var table = enumerator.functionsTable;
+
+        for (var i = 0; i < table.childCount; i++)
+        {
+            var child = table.GetChild(i);
+
+            child.gameObject.SetActive(i < lines.Count);
+
+            if (i < lines.Count)
+            {
+                child.GetComponent<GuiLabel>().Text = lines[i];
+            }
         }
     }
 

@@ -165,10 +165,13 @@ public static class TooltipPanelPatcher
     public static class TooltipFeatureDeviceFunctionsEnumerator_Bind_Patch
     {
         [UsedImplicitly]
-        public static void Postfix(TooltipFeatureDeviceFunctionsEnumerator __instance)
+        public static void Postfix(TooltipFeatureDeviceFunctionsEnumerator __instance, ITooltip tooltip)
         {
             Tooltips.ModifyWidth<TooltipFeatureDeviceFunctionsEnumWidthMod, TooltipFeatureDeviceFunctionsEnumerator>(
                 __instance);
+
+            //PATCH: keeps the Staff of Power and Staff of the Magi tooltips short enough to fit on screen
+            MagicItemsContext.CompactStaffFunctions(__instance, tooltip);
         }
     }
 
