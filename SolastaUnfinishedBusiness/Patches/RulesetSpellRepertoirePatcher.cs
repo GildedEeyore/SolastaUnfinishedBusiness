@@ -477,4 +477,81 @@ public static class RulesetSpellRepertoirePatcher
             }
         }
     }
+
+    //PATCH: a known cantrip is never added twice (vanilla adds it again every time it is granted, i.e. fixed list
+    // repertoires like Aasimar Magic or Arcane Omens get their cantrip again each time GrantFixedSpells runs)
+    [HarmonyPatch(typeof(RulesetSpellRepertoire), nameof(RulesetSpellRepertoire.GrantCantrip))]
+    [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
+    [UsedImplicitly]
+    public static class GrantCantrip_Patch
+    {
+        [UsedImplicitly]
+        public static bool Prefix(
+            RulesetSpellRepertoire __instance,
+            SpellDefinition grantedCantrip,
+            string specialSpellsTag)
+        {
+            // tagged cantrips already skip duplicates in vanilla
+            return !string.IsNullOrEmpty(specialSpellsTag) || !__instance.KnownCantrips.Contains(grantedCantrip);
+        }
+    }
+
+    //PATCH: a known spell is never added twice to selection or fixed list repertoires
+    [HarmonyPatch(typeof(RulesetSpellRepertoire), nameof(RulesetSpellRepertoire.GrantSpell))]
+    [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
+    [UsedImplicitly]
+    public static class GrantSpell_Patch
+    {
+        [UsedImplicitly]
+        public static bool Prefix(
+            RulesetSpellRepertoire __instance,
+            ref bool __result,
+            SpellDefinition grantedSpell,
+            string specialSpellsTag)
+        {
+            if (!string.IsNullOrEmpty(specialSpellsTag) ||
+                __instance.SpellCastingFeature.SpellKnowledge is not
+                    (SpellKnowledge.Selection or SpellKnowledge.FixedList) ||
+                !__instance.KnownSpells.Contains(grantedSpell))
+            {
+                return true;
+            }
+
+            __result = true;
+
+            return false;
+        }
+    }
+
+    //PATCH: removes cantrips and spells already duplicated on saved heroes
+    [HarmonyPatch(typeof(RulesetSpellRepertoire), nameof(RulesetSpellRepertoire.SerializeElements))]
+    [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
+    [UsedImplicitly]
+    public static class SerializeElements_Patch
+    {
+        [UsedImplicitly]
+        public static void Postfix(RulesetSpellRepertoire __instance, IElementsSerializer serializer)
+        {
+            if (serializer.Mode != Serializer.SerializationMode.Read)
+            {
+                return;
+            }
+
+            RemoveDuplicates(__instance.KnownCantrips);
+            RemoveDuplicates(__instance.KnownSpells);
+        }
+
+        private static void RemoveDuplicates(List<SpellDefinition> spells)
+        {
+            var distinct = spells.Distinct().ToList();
+
+            if (distinct.Count == spells.Count)
+            {
+                return;
+            }
+
+            spells.Clear();
+            spells.AddRange(distinct);
+        }
+    }
 }
