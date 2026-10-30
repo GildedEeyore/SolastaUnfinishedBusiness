@@ -353,6 +353,23 @@ public static class RulesetCharacterHeroPatcher
         }
     }
 
+    [HarmonyPatch(typeof(RulesetCharacterHero), nameof(RulesetCharacterHero.EnumerateAttunableItems))]
+    [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
+    [UsedImplicitly]
+    public static class EnumerateAttunableItems_Patch
+    {
+        [UsedImplicitly]
+        public static void Postfix(
+            RulesetCharacterHero __instance,
+            List<RulesetCharacterHero> heroes,
+            List<RulesetItem> attunableItems,
+            bool considerMyAttunedItems)
+        {
+            //PATCH: anyone with spell slots can attune to an item that requires attunement by a spellcaster
+            MagicItemsContext.AddItemsAttunableBySpellcaster(__instance, heroes, attunableItems, considerMyAttunedItems);
+        }
+    }
+
     [HarmonyPatch(typeof(RulesetCharacterHero), nameof(RulesetCharacterHero.FindClassHoldingFeature))]
     [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
     [UsedImplicitly]

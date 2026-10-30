@@ -752,6 +752,9 @@ public static class RulesetCharacterPatcher
 
             //PATCH: Undead Warlock Profane Casting skips somatic components of conjuration and necromancy spells
             PatronUndead.ValidateProfaneCasting(__instance, spellDefinition, false, ref __result, ref failure);
+
+            //PATCH: Spell Duelist's Trophy Helping Hand skips somatic components of spells cast with a spell slot
+            MagicItemsContext.ValidateHelpingHand(__instance, spellDefinition, ref __result, ref failure);
         }
 
 #if false

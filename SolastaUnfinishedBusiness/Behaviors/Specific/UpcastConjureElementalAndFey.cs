@@ -33,14 +33,49 @@ internal static class UpcastConjureElementalAndFey
             return true;
         }
 
-        __instance.spellCastEngaged?.Invoke(
-            __instance.spellRepertoire, _filteredSubspells[index], __instance.slotLevel);
+        if (__instance.deviceFunctionEngaged != null)
+        {
+            // the game expects an index into the full subspell list when using a scroll or other device
+            __instance.deviceFunctionEngaged(
+                __instance.guiCharacter, __instance.rulesetItemDevice, __instance.rulesetDeviceFunction, 0,
+                __instance.masterSpell.SubspellsList.IndexOf(_filteredSubspells[index]));
+        }
+        else
+        {
+            __instance.spellCastEngaged?.Invoke(
+                __instance.spellRepertoire, _filteredSubspells[index], __instance.slotLevel);
+        }
 
         __instance.Hide();
 
         _filteredSubspells.Clear();
 
         return false;
+    }
+
+    /**
+     * Patch implementation
+     * Replaces calls to masterSpell.SubspellsList getter when using a scroll or other device, so spells with one
+     * subspell per slot level only show the ones for the level the device casts at
+     */
+    [CanBeNull]
+    internal static List<SpellDefinition> DeviceSubspellsList([NotNull] SpellDefinition masterSpell)
+    {
+        var subspellsList = masterSpell.SubspellsList;
+
+        _filteredSubspells = null;
+
+        if (subspellsList == null || !subspellsList.Any(SlotLevelBySubspell.ContainsKey))
+        {
+            return subspellsList;
+        }
+
+        // devices cast at the spell's own level (RulesetEffectSpell uses SpellLevel + added charges)
+        _filteredSubspells = subspellsList
+            .Where(x => SlotLevelBySubspell.TryGetValue(x, out var level) && level == masterSpell.SpellLevel)
+            .ToList();
+
+        return _filteredSubspells;
     }
 
     /**

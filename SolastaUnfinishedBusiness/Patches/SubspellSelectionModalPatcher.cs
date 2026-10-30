@@ -50,4 +50,28 @@ public static class SubspellSelectionModalPatcher
                 new CodeInstruction(OpCodes.Call, getSpellList));
         }
     }
+
+    [HarmonyPatch(typeof(SubspellSelectionModal), nameof(SubspellSelectionModal.Bind))]
+    [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
+    [HarmonyPatch([
+        typeof(RulesetItemDevice), typeof(RulesetDeviceFunction), typeof(GuiCharacter),
+        typeof(UsableDeviceFunctionBox.DeviceFunctionEngagedHandler), typeof(RectTransform)
+    ])]
+    [UsedImplicitly]
+    public static class BindDevice_Patch
+    {
+        [NotNull]
+        [UsedImplicitly]
+        public static IEnumerable<CodeInstruction> Transpiler([NotNull] IEnumerable<CodeInstruction> instructions)
+        {
+            //PATCH: only lists the subspells for the level a scroll or other device casts at (Summon Elemental, etc.)
+            var subspellsListMethod = typeof(SpellDefinition).GetMethod("get_SubspellsList");
+            var getSpellList =
+                new Func<SpellDefinition, List<SpellDefinition>>(UpcastConjureElementalAndFey.DeviceSubspellsList)
+                    .Method;
+
+            return instructions.ReplaceCalls(subspellsListMethod, "SubspellSelectionModal.BindDevice",
+                new CodeInstruction(OpCodes.Call, getSpellList));
+        }
+    }
 }
