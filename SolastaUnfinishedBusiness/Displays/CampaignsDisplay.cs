@@ -236,6 +236,13 @@ internal static class CampaignsDisplay
             Main.Settings.EnableHeroWithBestProficiencyToRollChoice = toggle;
         }
 
+        toggle = Main.Settings.EnableAutoGuidanceOnSkillChecks;
+        if (UI.Toggle(Gui.Localize("ModUi/&EnableAutoGuidanceOnSkillChecks") + " \u00a9".Grey(), ref toggle,
+                UI.AutoWidth()))
+        {
+            Main.Settings.EnableAutoGuidanceOnSkillChecks = toggle;
+        }
+
         toggle = Main.Settings.EnableAlternateVotingSystem;
         if (UI.Toggle(Gui.Localize("ModUi/&EnableAlternateVotingSystem"), ref toggle, UI.AutoWidth()))
         {
