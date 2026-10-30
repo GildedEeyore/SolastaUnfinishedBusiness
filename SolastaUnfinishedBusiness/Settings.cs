@@ -198,6 +198,7 @@ public class Settings : UnityModManager.ModSettings
     public float SpeechVolume { get; set; }
     public bool FixGameVolume { get; set; }
     public bool EnableHeroWithBestProficiencyToRollChoice { get; set; }
+    public bool EnableAutoGuidanceOnSkillChecks { get; set; }
     public bool MarkInvisibleTeleportersOnLevelMap { get; set; }
     public bool EnableAlternateVotingSystem { get; set; }
     public bool EnableSumD20OnAlternateVotingSystem { get; set; }

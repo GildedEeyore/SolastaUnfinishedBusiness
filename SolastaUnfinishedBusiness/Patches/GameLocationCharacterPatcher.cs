@@ -842,4 +842,46 @@ public static class GameLocationCharacterPatcher
             return false;
         }
     }
+
+    //PATCH: auto cast Guidance before an out of combat skill check
+    [HarmonyPatch(typeof(GameLocationCharacter), nameof(GameLocationCharacter.RollAbilityCheck), [
+        typeof(string), typeof(string), typeof(int), typeof(AdvantageType), typeof(ActionModifier), typeof(bool),
+        typeof(int), typeof(RollOutcome), typeof(int), typeof(bool), typeof(bool), typeof(bool)
+    ], [
+        ArgumentType.Normal, ArgumentType.Normal, ArgumentType.Normal, ArgumentType.Normal, ArgumentType.Normal,
+        ArgumentType.Normal, ArgumentType.Normal, ArgumentType.Out, ArgumentType.Out, ArgumentType.Normal,
+        ArgumentType.Normal, ArgumentType.Normal
+    ])]
+    [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
+    [UsedImplicitly]
+    public static class RollAbilityCheck_Patch
+    {
+        [UsedImplicitly]
+        public static void Prefix(GameLocationCharacter __instance, string proficiencyName, bool passive)
+        {
+            AutoGuidanceContext.TryCastGuidanceBeforeAbilityCheck(__instance, proficiencyName, passive);
+        }
+    }
+
+    //PATCH: auto cast Guidance before an out of combat skill check
+    [HarmonyPatch(typeof(GameLocationCharacter), nameof(GameLocationCharacter.RollAbilityCheck), [
+        typeof(string), typeof(string), typeof(int), typeof(AdvantageType), typeof(ActionModifier), typeof(bool),
+        typeof(int), typeof(int), typeof(int), typeof(int), typeof(int), typeof(RollOutcome), typeof(int),
+        typeof(bool), typeof(bool), typeof(bool)
+    ], [
+        ArgumentType.Normal, ArgumentType.Normal, ArgumentType.Normal, ArgumentType.Normal, ArgumentType.Normal,
+        ArgumentType.Normal, ArgumentType.Normal, ArgumentType.Out, ArgumentType.Out, ArgumentType.Out,
+        ArgumentType.Out, ArgumentType.Out, ArgumentType.Out, ArgumentType.Normal, ArgumentType.Normal,
+        ArgumentType.Normal
+    ])]
+    [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
+    [UsedImplicitly]
+    public static class RollAbilityCheckDetailed_Patch
+    {
+        [UsedImplicitly]
+        public static void Prefix(GameLocationCharacter __instance, string proficiencyName, bool passive)
+        {
+            AutoGuidanceContext.TryCastGuidanceBeforeAbilityCheck(__instance, proficiencyName, passive);
+        }
+    }
 }

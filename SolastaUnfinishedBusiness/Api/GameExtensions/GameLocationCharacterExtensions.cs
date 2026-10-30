@@ -969,6 +969,8 @@ public static class GameLocationCharacterExtensions
         bool notify = true,
         bool displayDieOutcome = true)
     {
+        AutoGuidanceContext.TryCastGuidanceBeforeAbilityCheck(instance, proficiencyName, passive);
+
         var abilityCheckBonus = instance.RulesetCharacter.ComputeBaseAbilityCheckBonus(abilityScoreName,
             checkModifier.AbilityCheckModifierTrends, proficiencyName);
         var contextField = (int)RuleDefinitions.AbilityCheckContext.None;
