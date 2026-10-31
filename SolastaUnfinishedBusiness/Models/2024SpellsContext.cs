@@ -538,9 +538,11 @@ public static partial class Tabletop2024Context
     {
         internal static readonly ModifyEffectDescriptionSpareTheDying Instance = new();
 
+        // modifiers on a character's features are checked against every spell and power they use,
+        // so the Return to Life power must not change anything but itself and Spare the Dying
         public bool IsValid(BaseDefinition definition, RulesetCharacter character, EffectDescription effectDescription)
         {
-            return true;
+            return definition == SpareTheDying || definition.Name == "PowerDomainGraveReturnToLife";
         }
 
         // cantrip upgrade: range doubles at levels 5 (30 feet), 11 (60 feet) and 17 (120 feet)
