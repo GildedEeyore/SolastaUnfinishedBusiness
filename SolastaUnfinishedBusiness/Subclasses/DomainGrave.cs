@@ -56,7 +56,7 @@ public sealed class DomainGrave : AbstractSubclass
             .SetAutoTag("Domain")
             .SetPreparedSpellGroups(
                 BuildSpellGroup(1, DetectEvilAndGood, FalseLife),
-                BuildSpellGroup(3, SpellsContext.GentleRepose, RayOfEnfeeblement),
+                BuildSpellGroup(3, Blindness, RayOfEnfeeblement),
                 BuildSpellGroup(5, Revivify, VampiricTouch),
                 BuildSpellGroup(7, Blight, DeathWard),
                 BuildSpellGroup(9, DispelEvilAndGood, RaiseDead))

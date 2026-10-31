@@ -97,10 +97,8 @@ internal static class ScrollsData
 
     private static void AddScrollRecipes()
     {
-        AddScrollRecipe("GentleRepose", ItemDefinitions.CraftingManualScrollOfLesserRestoration,
-            ItemDefinitions.Ingredient_TrollAcanthus,
-            ItemDefinitions.Ingredient_Moonflower,
-            ItemDefinitions.Ingredient_AbyssMoss);
+        // add crafting recipes for mod scrolls here, e.g.
+        // AddScrollRecipe("SpellName", ItemDefinitions.CraftingManualScrollOfLesserRestoration, ingredients...);
     }
 
     private static void AddScrollRecipe(
