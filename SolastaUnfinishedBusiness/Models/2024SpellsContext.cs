@@ -254,7 +254,7 @@ public static partial class Tabletop2024Context
     private static void LoadOneDndSpellSpareTheDying()
     {
         // 2024 rules: V, S components, 15 feet range on any creature at 0 HP, also on the druid list
-        // use a copy so Healer feat and Grave Domain powers that share the vanilla effect keep touch range
+        // use a copy so the Healer feat power that shares the vanilla effect keeps touch range
         SpareTheDying.verboseComponent = true;
         SpareTheDying.effectDescription = EffectDescriptionBuilder
             .Create(SpareTheDying.EffectDescription)
@@ -263,7 +263,7 @@ public static partial class Tabletop2024Context
         SpareTheDying.EffectDescription.rangeType = RangeType.Distance;
         SpareTheDying.EffectDescription.rangeParameter = 3;
         SpareTheDying.GuiPresentation.description = "Spell/&SpareTheDyingExtendedDescription";
-        SpareTheDying.AddCustomSubFeatures(new ModifyEffectDescriptionSpareTheDying());
+        SpareTheDying.AddCustomSubFeatures(ModifyEffectDescriptionSpareTheDying.Instance);
         SpellListDefinitions.SpellListDruid.AddSpell(SpareTheDying);
     }
 
@@ -533,11 +533,16 @@ public static partial class Tabletop2024Context
         }
     }
 
-    private sealed class ModifyEffectDescriptionSpareTheDying : IModifyEffectDescription
+    // also used by the Grave Domain Return to Life power, which casts Spare the Dying as a Bonus Action
+    internal sealed class ModifyEffectDescriptionSpareTheDying : IModifyEffectDescription
     {
+        internal static readonly ModifyEffectDescriptionSpareTheDying Instance = new();
+
+        // modifiers on a character's features are checked against every spell and power they use,
+        // so the Return to Life power must not change anything but itself and Spare the Dying
         public bool IsValid(BaseDefinition definition, RulesetCharacter character, EffectDescription effectDescription)
         {
-            return definition == SpareTheDying;
+            return definition == SpareTheDying || definition.Name == "PowerDomainGraveReturnToLife";
         }
 
         // cantrip upgrade: range doubles at levels 5 (30 feet), 11 (60 feet) and 17 (120 feet)
