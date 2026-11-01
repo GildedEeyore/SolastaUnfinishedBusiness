@@ -67,6 +67,7 @@ internal static class ScrollsData
         }
 
         AddScrollRecipes();
+        BuildRetiredScrollItems();
 
         foreach (var merchant in DatabaseRepository.GetDatabase<MerchantDefinition>())
         {
@@ -113,7 +114,15 @@ internal static class ScrollsData
             return;
         }
 
+        AddScrollRecipe(scroll, true, vanillaManual, ingredients);
+    }
+
+    private static void AddScrollRecipe(
+        ItemDefinition scroll, bool soldByMerchants, ItemDefinition vanillaManual,
+        params ItemDefinition[] ingredients)
+    {
         var spell = GetScrollSpell(scroll);
+        var spellName = spell.Name;
         var vanillaRecipe = vanillaManual.DocumentDescription.RecipeDefinition;
         var scrollTitle = GuiItemTweaks.FormatTitle(scroll);
 
@@ -142,7 +151,10 @@ internal static class ScrollsData
             .HideFromDungeonEditor()
             .AddToDB();
 
-        ScrollManualsByVanillaManual[vanillaManual] = manual;
+        if (soldByMerchants)
+        {
+            ScrollManualsByVanillaManual[vanillaManual] = manual;
+        }
     }
 
     internal static void AddScrollRecipesToMerchant(MerchantDefinition merchant)
@@ -294,6 +306,16 @@ internal static class ScrollsData
         }
     }
 
+    // items of spells removed from play: they are never sold, found or craftable, but saves that hold them still load
+    private static void BuildRetiredScrollItems()
+    {
+        AddScrollRecipe(CreateScroll(SpellsContext.GentleRepose), false,
+            ItemDefinitions.CraftingManualScrollOfLesserRestoration,
+            ItemDefinitions.Ingredient_TrollAcanthus,
+            ItemDefinitions.Ingredient_Moonflower,
+            ItemDefinitions.Ingredient_AbyssMoss);
+    }
+
     private static void BuildScroll(SpellDefinition spell)
     {
         var spellLevel = spell.SpellLevel;
@@ -304,7 +326,14 @@ internal static class ScrollsData
             ScrollsByLevel[spellLevel] = scrolls;
         }
 
-        scrolls.Add(ItemDefinitionBuilder.Create(ItemDefinitions.ScrollFly, $"Scroll_{spell.Name}")
+        scrolls.Add(CreateScroll(spell));
+    }
+
+    private static ItemDefinition CreateScroll(SpellDefinition spell)
+    {
+        var spellLevel = spell.SpellLevel;
+
+        return ItemDefinitionBuilder.Create(ItemDefinitions.ScrollFly, $"Scroll_{spell.Name}")
             .SetGuiPresentation("Item/&Scroll_Of_Title", "Item/&Scroll_Of_Description",
                 sprite: ScrollIconsBySpellLevel[spellLevel])
             .SetGold(ScrollCostBySpellLevel[spellLevel])
@@ -317,7 +346,7 @@ internal static class ScrollsData
                     .SetSpell(spell)
                     .Build())
                 .Build())
-            .AddToDB());
+            .AddToDB();
     }
 
     private static ItemFlagDefinition BuildSpellFlag()
