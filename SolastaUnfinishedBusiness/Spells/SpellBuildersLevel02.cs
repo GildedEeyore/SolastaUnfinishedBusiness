@@ -1457,6 +1457,9 @@ internal static partial class SpellBuilders
     private static ConditionDefinition _conditionGentleRepose;
     private const int GentleReposeDurationSeconds = 10 * 24 * 60 * 60;
 
+    // Gentle Repose was removed: Solasta makes the party revive its dead right after combat, so it did almost
+    // nothing. The spell is still built, but isn't on any spell list or in the mod manager, so saves that hold it
+    // (a spellbook, a prepared spell, a scroll) still load.
     internal static SpellDefinition BuildGentleRepose()
     {
         const string NAME = "GentleRepose";

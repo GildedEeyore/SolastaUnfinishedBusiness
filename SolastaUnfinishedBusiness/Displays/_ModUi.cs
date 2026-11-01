@@ -181,7 +181,6 @@ internal static class ModUi
         "FochlucanBandore",
         "Foresight",
         "ForestGuardian",
-        "GentleRepose",
         "Glibness",
         "GiftOfAlacrity",
         "GraveGround",

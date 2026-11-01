@@ -63,6 +63,7 @@ internal static class SpellsContext
     internal static readonly SpellDefinition EnduringSting = BuildEnduringSting();
     internal static readonly SpellDefinition EnsnaringStrike = BuildEnsnaringStrike();
     internal static readonly SpellDefinition FarStep = BuildFarStep();
+    // removed from play, but still built so saves that hold it load; see BuildGentleRepose
     internal static readonly SpellDefinition GentleRepose = BuildGentleRepose();
     internal static readonly SpellDefinition MaddeningDarkness = BuildMaddeningDarkness();
     internal static readonly SpellDefinition MantleOfThorns = BuildMantleOfThorns();
@@ -330,7 +331,6 @@ internal static class SpellsContext
         ConjureGoblinoids.contentPack = CeContentPackContext.CeContentPack;
         RegisterSpell(ConjureGoblinoids, 0, SpellListDruid, SpellListRanger);
         RegisterSpell(BuildElminstersElusion(), 0, SpellListWizard);
-        RegisterSpell(GentleRepose, 0, SpellListCleric, SpellListPaladin, SpellListWizard);
         RegisterSpell(BuildKineticJaunt(), 0, SpellListBard, SpellListSorcerer, SpellListWizard,
             spellListInventorClass);
         RegisterSpell(BuildDragonsBreath(), 0, SpellListSorcerer, SpellListWizard);
