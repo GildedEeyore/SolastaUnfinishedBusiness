@@ -1137,7 +1137,7 @@ internal static partial class SpellBuilders
 
     // icy blue
     private const float WallOfIceHue = 0.54f;
-    private const float WallOfIceMinSaturation = 0.45f;
+    private const float WallOfIceMinSaturation = 0.6f;
 
     internal static SpellDefinition BuildWallOfIce()
     {
@@ -1180,11 +1180,12 @@ internal static partial class SpellBuilders
                         EffectFormBuilder.TopologyForm(TopologyForm.Type.MoveBlocker, true),
                         EffectFormBuilder.TopologyForm(TopologyForm.Type.ProjectileBlocker, true),
                         EffectFormBuilder.Create().SetSummonEffectProxyForm(proxy).Build())
-                    .SetParticleEffectParameters(WallOfForce)
+                    // the game has no Wall of Stone, so the solid wall of Wall of Thorns is used instead
+                    .SetParticleEffectParameters(WallOfThornsWallLine)
                     .Build())
             .AddToDB();
 
-        // the Wall of Air particles Wall of Force uses are tinted icy blue
+        // the Wall of Thorns particles are tinted icy blue
         var particles = spell.EffectDescription.EffectParticleParameters;
 
         RecoloredParticles.Recolor(particles.casterParticleReference, "WallOfIceCasterParticle",
@@ -1193,6 +1194,12 @@ internal static partial class SpellBuilders
         RecoloredParticles.Recolor(particles.impactParticleReference, "WallOfIceImpactParticle",
             WallOfIceHue, WallOfIceMinSaturation,
             reference => ReplaceWallOfIceParticles(spell, x => x.impactParticleReference = reference));
+        RecoloredParticles.Recolor(particles.activeEffectImpactParticleReference, "WallOfIceActiveImpactParticle",
+            WallOfIceHue, WallOfIceMinSaturation,
+            reference => ReplaceWallOfIceParticles(spell, x => x.activeEffectImpactParticleReference = reference));
+        RecoloredParticles.Recolor(particles.activeEffectCellStartParticleReference, "WallOfIceCellStartParticle",
+            WallOfIceHue, WallOfIceMinSaturation,
+            reference => ReplaceWallOfIceParticles(spell, x => x.activeEffectCellStartParticleReference = reference));
         RecoloredParticles.Recolor(particles.activeEffectCellParticleReference, "WallOfIceCellParticle",
             WallOfIceHue, WallOfIceMinSaturation,
             reference => ReplaceWallOfIceParticles(spell, x => x.activeEffectCellParticleReference = reference));
