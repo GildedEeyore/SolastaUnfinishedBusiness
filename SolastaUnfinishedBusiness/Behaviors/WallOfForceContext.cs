@@ -5,8 +5,8 @@ using static RuleDefinitions;
 
 namespace SolastaUnfinishedBusiness.Behaviors;
 
-// Wall of Force is the only effect with a MoveBlocker topology form, so any cell flagged as a dynamic move blocker
-// is part of a wall of force (see GameLocationEnvironmentManagerPatcher.TopologyChangeInProgress_Patch)
+// Wall of Force and Wall of Ice are the only effects with a MoveBlocker topology form, so any cell flagged as a dynamic
+// move blocker is part of one of these walls (see GameLocationEnvironmentManagerPatcher.TopologyChangeInProgress_Patch)
 internal static class WallOfForceContext
 {
     private static List<RaycastGridHit> _hits = [];

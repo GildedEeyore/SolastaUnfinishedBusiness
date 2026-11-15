@@ -1132,4 +1132,107 @@ internal static partial class SpellBuilders
     }
 
     #endregion
+
+    #region Wall of Ice
+
+    // icy blue
+    private const float WallOfIceHue = 0.54f;
+    private const float WallOfIceMinSaturation = 0.45f;
+
+    internal static SpellDefinition BuildWallOfIce()
+    {
+        const string NAME = "WallOfIce";
+
+        // the wall reuses the Wall of Force proxy and blocking, so it stops movement, attacks and areas of effect
+        var proxy = EffectProxyDefinitionBuilder
+            .Create(EffectProxyDefinitions.ProxyWallOfForce, $"Proxy{NAME}")
+            .SetOrUpdateGuiPresentation(NAME, Category.Spell)
+            .AddToDB();
+
+        var spell = SpellDefinitionBuilder
+            .Create(NAME)
+            .SetGuiPresentation(Category.Spell, Sprites.GetSprite(NAME, Resources.WallOfIce, 128))
+            .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolEvocation)
+            .SetSpellLevel(6)
+            .SetCastingTime(ActivationTime.Action)
+            // RAW a small piece of quartz, covered by a pouch or focus
+            .SetMaterialComponent(MaterialComponentType.Mundane)
+            .SetSomaticComponent(true)
+            .SetVerboseComponent(true)
+            .SetVocalSpellSameType(VocalSpellSemeType.Attack)
+            .SetRequiresConcentration(true)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetDurationData(DurationType.Minute, 10)
+                    // a flat wall of ten 10-foot panels: 100 feet long and 10 feet high, like Wall of Force
+                    .SetTargetingData(Side.All, RangeType.Distance, 24, TargetType.WallLine, 20, 2)
+                    .SetEffectAdvancement(EffectIncrementMethod.PerAdditionalSlotLevel, additionalDicePerIncrement: 2)
+                    .SetSavingThrowData(false, AttributeDefinitions.Dexterity, false,
+                        EffectDifficultyClassComputation.SpellCastingFeature)
+                    .SetEffectForms(
+                        EffectFormBuilder
+                            .Create()
+                            .HasSavingThrow(EffectSavingThrowType.HalfDamage)
+                            .SetDamageForm(DamageTypeCold, 10, DieType.D6)
+                            .Build(),
+                        EffectFormBuilder.MotionForm(MotionForm.MotionType.PushFromWall),
+                        EffectFormBuilder.TopologyForm(TopologyForm.Type.MoveBlocker, true),
+                        EffectFormBuilder.TopologyForm(TopologyForm.Type.ProjectileBlocker, true),
+                        EffectFormBuilder.Create().SetSummonEffectProxyForm(proxy).Build())
+                    .SetParticleEffectParameters(WallOfForce)
+                    .Build())
+            .AddToDB();
+
+        // the Wall of Air particles Wall of Force uses are tinted icy blue
+        var particles = spell.EffectDescription.EffectParticleParameters;
+
+        RecoloredParticles.Recolor(particles.casterParticleReference, "WallOfIceCasterParticle",
+            WallOfIceHue, WallOfIceMinSaturation,
+            reference => ReplaceWallOfIceParticles(spell, x => x.casterParticleReference = reference));
+        RecoloredParticles.Recolor(particles.impactParticleReference, "WallOfIceImpactParticle",
+            WallOfIceHue, WallOfIceMinSaturation,
+            reference => ReplaceWallOfIceParticles(spell, x => x.impactParticleReference = reference));
+        RecoloredParticles.Recolor(particles.activeEffectCellParticleReference, "WallOfIceCellParticle",
+            WallOfIceHue, WallOfIceMinSaturation,
+            reference => ReplaceWallOfIceParticles(spell, x => x.activeEffectCellParticleReference = reference));
+
+        // a Disintegrate spell that targets the wall destroys it, standing in for breaking through the ice
+        Disintegrate.AddCustomSubFeatures(new PowerOrSpellFinishedByMeDisintegrateWallOfIce(spell));
+
+        return spell;
+    }
+
+    private static void ReplaceWallOfIceParticles(SpellDefinition spell, Action<EffectParticleParameters> change)
+    {
+        var effectDescription = spell.EffectDescription;
+        var particles = new EffectParticleParameters();
+
+        particles.Copy(effectDescription.EffectParticleParameters);
+        particles.activeEffectSurfaceParticlePerIndexCount =
+            effectDescription.EffectParticleParameters.activeEffectSurfaceParticlePerIndexCount;
+        change(particles);
+        effectDescription.effectParticleParameters = particles;
+    }
+
+    private sealed class PowerOrSpellFinishedByMeDisintegrateWallOfIce(SpellDefinition spellWallOfIce)
+        : IPowerOrSpellFinishedByMe
+    {
+        public IEnumerator OnPowerOrSpellFinishedByMe(CharacterActionMagicEffect action, BaseDefinition baseDefinition)
+        {
+            foreach (var target in action.ActionParams.TargetCharacters)
+            {
+                if (target.RulesetCharacter is RulesetCharacterEffectProxy proxy &&
+                    RulesetEntity.TryGetEntity<RulesetEffectSpell>(proxy.EffectGuid, out var rulesetEffectSpell) &&
+                    rulesetEffectSpell.SpellDefinition == spellWallOfIce)
+                {
+                    rulesetEffectSpell.Terminate(true);
+                }
+            }
+
+            yield break;
+        }
+    }
+
+    #endregion
 }
