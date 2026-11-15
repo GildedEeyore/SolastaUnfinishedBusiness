@@ -3050,6 +3050,26 @@
       PublicKeyToken=b77a5c561934e089
     </value>
   </data>
+  <data name="Dissuader" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Items\Dissuader.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
+      PublicKeyToken=b77a5c561934e089
+    </value>
+  </data>
+  <data name="StaffOfCharming" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Items\StaffOfCharming.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
+      PublicKeyToken=b77a5c561934e089
+    </value>
+  </data>
+  <data name="StaffOfThunderAndLightning" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Items\StaffOfThunderAndLightning.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
+      PublicKeyToken=b77a5c561934e089
+    </value>
+  </data>
+  <data name="VoyagerStaff" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Items\VoyagerStaff.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
+      PublicKeyToken=b77a5c561934e089
+    </value>
+  </data>
   <data name="StaffOfFrost" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Items\StaffOfFrost.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
       PublicKeyToken=b77a5c561934e089
