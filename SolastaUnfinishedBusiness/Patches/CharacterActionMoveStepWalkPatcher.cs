@@ -4,6 +4,7 @@ using JetBrains.Annotations;
 using SolastaUnfinishedBusiness.Api.GameExtensions;
 using SolastaUnfinishedBusiness.Behaviors.Specific;
 using SolastaUnfinishedBusiness.Interfaces;
+using SolastaUnfinishedBusiness.Models;
 using SolastaUnfinishedBusiness.Subclasses;
 
 namespace SolastaUnfinishedBusiness.Patches;
@@ -61,6 +62,9 @@ public static class CharacterActionMoveStepWalkPatcher
             {
                 yield return extraAoOEvents.Current;
             }
+
+            //PATCH: support for the Dissuader's Repel property
+            yield return MagicItemsContext.HandleDissuaderRepel(mover);
         }
     }
 }
