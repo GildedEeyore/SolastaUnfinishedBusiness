@@ -1135,10 +1135,6 @@ internal static partial class SpellBuilders
 
     #region Wall of Ice
 
-    // icy blue
-    private const float WallOfIceHue = 0.54f;
-    private const float WallOfIceMinSaturation = 0.6f;
-
     internal static SpellDefinition BuildWallOfIce()
     {
         const string NAME = "WallOfIce";
@@ -1180,46 +1176,16 @@ internal static partial class SpellBuilders
                         EffectFormBuilder.TopologyForm(TopologyForm.Type.MoveBlocker, true),
                         EffectFormBuilder.TopologyForm(TopologyForm.Type.ProjectileBlocker, true),
                         EffectFormBuilder.Create().SetSummonEffectProxyForm(proxy).Build())
-                    // the game has no Wall of Stone, so the solid wall of Wall of Thorns is used instead
-                    .SetParticleEffectParameters(WallOfThornsWallLine)
+                    // the game has no Wall of Stone, so the wall shows the falling sleet and frost of Sleet Storm
+                    .SetParticleEffectParameters(SleetStorm)
+                    .SetImpactEffectParameters(ConeOfCold)
                     .Build())
             .AddToDB();
-
-        // the Wall of Thorns particles are tinted icy blue
-        var particles = spell.EffectDescription.EffectParticleParameters;
-
-        RecoloredParticles.Recolor(particles.casterParticleReference, "WallOfIceCasterParticle",
-            WallOfIceHue, WallOfIceMinSaturation,
-            reference => ReplaceWallOfIceParticles(spell, x => x.casterParticleReference = reference));
-        RecoloredParticles.Recolor(particles.impactParticleReference, "WallOfIceImpactParticle",
-            WallOfIceHue, WallOfIceMinSaturation,
-            reference => ReplaceWallOfIceParticles(spell, x => x.impactParticleReference = reference));
-        RecoloredParticles.Recolor(particles.activeEffectImpactParticleReference, "WallOfIceActiveImpactParticle",
-            WallOfIceHue, WallOfIceMinSaturation,
-            reference => ReplaceWallOfIceParticles(spell, x => x.activeEffectImpactParticleReference = reference));
-        RecoloredParticles.Recolor(particles.activeEffectCellStartParticleReference, "WallOfIceCellStartParticle",
-            WallOfIceHue, WallOfIceMinSaturation,
-            reference => ReplaceWallOfIceParticles(spell, x => x.activeEffectCellStartParticleReference = reference));
-        RecoloredParticles.Recolor(particles.activeEffectCellParticleReference, "WallOfIceCellParticle",
-            WallOfIceHue, WallOfIceMinSaturation,
-            reference => ReplaceWallOfIceParticles(spell, x => x.activeEffectCellParticleReference = reference));
 
         // a Disintegrate spell that targets the wall destroys it, standing in for breaking through the ice
         Disintegrate.AddCustomSubFeatures(new PowerOrSpellFinishedByMeDisintegrateWallOfIce(spell));
 
         return spell;
-    }
-
-    private static void ReplaceWallOfIceParticles(SpellDefinition spell, Action<EffectParticleParameters> change)
-    {
-        var effectDescription = spell.EffectDescription;
-        var particles = new EffectParticleParameters();
-
-        particles.Copy(effectDescription.EffectParticleParameters);
-        particles.activeEffectSurfaceParticlePerIndexCount =
-            effectDescription.EffectParticleParameters.activeEffectSurfaceParticlePerIndexCount;
-        change(particles);
-        effectDescription.effectParticleParameters = particles;
     }
 
     private sealed class PowerOrSpellFinishedByMeDisintegrateWallOfIce(SpellDefinition spellWallOfIce)
