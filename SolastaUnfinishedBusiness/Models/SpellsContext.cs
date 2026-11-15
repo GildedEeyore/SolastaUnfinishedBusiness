@@ -87,6 +87,7 @@ internal static class SpellsContext
     internal static readonly SpellDefinition ThornyVines = BuildThornyVines();
     internal static readonly SpellDefinition ThunderousSmite = BuildThunderousSmite();
     internal static readonly SpellDefinition VitriolicSphere = BuildVitriolicSphere();
+    internal static readonly SpellDefinition WallOfIce = BuildWallOfIce();
     internal static readonly SpellDefinition Web = BuildWeb();
     internal static readonly SpellDefinition Wrack = BuildWrack();
     internal static readonly SpellDefinition WrathfulSmite = BuildWrathfulSmite();
@@ -425,6 +426,7 @@ internal static class SpellsContext
         RegisterSpell(BuildRingOfBlades(), 0, SpellListWizard);
         RegisterSpell(BuildScatter(), 0, SpellListSorcerer, SpellListWarlock, SpellListWizard);
         RegisterSpell(BuildShelterFromEnergy(), 0, SpellListCleric, SpellListDruid, SpellListSorcerer, SpellListWizard);
+        RegisterSpell(WallOfIce, 0, SpellListWizard);
 
         // 7th level
         RegisterSpell(BuildCrownOfStars(), 0, SpellListSorcerer, SpellListWarlock, SpellListWizard);

@@ -1132,4 +1132,80 @@ internal static partial class SpellBuilders
     }
 
     #endregion
+
+    #region Wall of Ice
+
+    internal static SpellDefinition BuildWallOfIce()
+    {
+        const string NAME = "WallOfIce";
+
+        // the wall reuses the Wall of Force proxy and blocking, so it stops movement, attacks and areas of effect
+        var proxy = EffectProxyDefinitionBuilder
+            .Create(EffectProxyDefinitions.ProxyWallOfForce, $"Proxy{NAME}")
+            .SetOrUpdateGuiPresentation(NAME, Category.Spell)
+            .AddToDB();
+
+        var spell = SpellDefinitionBuilder
+            .Create(NAME)
+            .SetGuiPresentation(Category.Spell, Sprites.GetSprite(NAME, Resources.WallOfIce, 128))
+            .SetSchoolOfMagic(SchoolOfMagicDefinitions.SchoolEvocation)
+            .SetSpellLevel(6)
+            .SetCastingTime(ActivationTime.Action)
+            // RAW a small piece of quartz, covered by a pouch or focus
+            .SetMaterialComponent(MaterialComponentType.Mundane)
+            .SetSomaticComponent(true)
+            .SetVerboseComponent(true)
+            .SetVocalSpellSameType(VocalSpellSemeType.Attack)
+            .SetRequiresConcentration(true)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetDurationData(DurationType.Minute, 10)
+                    // a flat wall of ten 10-foot panels: 100 feet long and 10 feet high, like Wall of Force
+                    .SetTargetingData(Side.All, RangeType.Distance, 24, TargetType.WallLine, 20, 2)
+                    .SetEffectAdvancement(EffectIncrementMethod.PerAdditionalSlotLevel, additionalDicePerIncrement: 2)
+                    .SetSavingThrowData(false, AttributeDefinitions.Dexterity, false,
+                        EffectDifficultyClassComputation.SpellCastingFeature)
+                    .SetEffectForms(
+                        EffectFormBuilder
+                            .Create()
+                            .HasSavingThrow(EffectSavingThrowType.HalfDamage)
+                            .SetDamageForm(DamageTypeCold, 10, DieType.D6)
+                            .Build(),
+                        EffectFormBuilder.MotionForm(MotionForm.MotionType.PushFromWall),
+                        EffectFormBuilder.TopologyForm(TopologyForm.Type.MoveBlocker, true),
+                        EffectFormBuilder.TopologyForm(TopologyForm.Type.ProjectileBlocker, true),
+                        EffectFormBuilder.Create().SetSummonEffectProxyForm(proxy).Build())
+                    // the game has no Wall of Stone, so the wall shows the falling sleet and frost of Sleet Storm
+                    .SetParticleEffectParameters(SleetStorm)
+                    .SetImpactEffectParameters(ConeOfCold)
+                    .Build())
+            .AddToDB();
+
+        // a Disintegrate spell that targets the wall destroys it, standing in for breaking through the ice
+        Disintegrate.AddCustomSubFeatures(new PowerOrSpellFinishedByMeDisintegrateWallOfIce(spell));
+
+        return spell;
+    }
+
+    private sealed class PowerOrSpellFinishedByMeDisintegrateWallOfIce(SpellDefinition spellWallOfIce)
+        : IPowerOrSpellFinishedByMe
+    {
+        public IEnumerator OnPowerOrSpellFinishedByMe(CharacterActionMagicEffect action, BaseDefinition baseDefinition)
+        {
+            foreach (var target in action.ActionParams.TargetCharacters)
+            {
+                if (target.RulesetCharacter is RulesetCharacterEffectProxy proxy &&
+                    RulesetEntity.TryGetEntity<RulesetEffectSpell>(proxy.EffectGuid, out var rulesetEffectSpell) &&
+                    rulesetEffectSpell.SpellDefinition == spellWallOfIce)
+                {
+                    rulesetEffectSpell.Terminate(true);
+                }
+            }
+
+            yield break;
+        }
+    }
+
+    #endregion
 }

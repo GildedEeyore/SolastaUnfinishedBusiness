@@ -2940,6 +2940,11 @@
       PublicKeyToken=b03f5f7f11d50a3a
     </value>
   </data>
+  <data name="WallOfIce" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Spells\WallOfIce.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
+      PublicKeyToken=b03f5f7f11d50a3a
+    </value>
+  </data>
   <data name="Wardaway" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Spells\Wardaway.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
       PublicKeyToken=b03f5f7f11d50a3a
@@ -3042,6 +3047,11 @@
   </data>
   <data name="SpellguardShield" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Items\SpellguardShield.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
+      PublicKeyToken=b77a5c561934e089
+    </value>
+  </data>
+  <data name="StaffOfFrost" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Items\StaffOfFrost.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral,
       PublicKeyToken=b77a5c561934e089
     </value>
   </data>

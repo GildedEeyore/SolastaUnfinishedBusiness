@@ -24,6 +24,7 @@ namespace SolastaUnfinishedBusiness.Models;
 // Arcana Unleashed and DMG magic items added in this fork
 internal static class MagicItemsContext
 {
+    private const int StaffOfFrostMaxCharges = 10;
     private const int StaffOfPowerMaxCharges = 20;
     private const int StaffOfTheMagiMaxCharges = 50;
     private const int RetributiveStrikeRange = 6; // 30 ft
@@ -33,6 +34,7 @@ internal static class MagicItemsContext
     internal static ItemDefinition OrbOfSorcery;
     internal static ItemDefinition RobeOfTheArchmagi;
     internal static ItemDefinition SpellguardShield;
+    internal static ItemDefinition StaffOfFrost;
     internal static ItemDefinition StaffOfPower;
     internal static ItemDefinition StaffOfTheMagi;
     internal static ItemDefinition SunBlade;
@@ -57,6 +59,7 @@ internal static class MagicItemsContext
         OrbOfSorcery = BuildOrbOfSorcery();
         RobeOfTheArchmagi = BuildRobeOfTheArchmagi();
         SpellguardShield = BuildSpellguardShield();
+        StaffOfFrost = BuildStaffOfFrost();
         StaffOfPower = BuildStaffOfPower();
         StaffOfTheMagi = BuildStaffOfTheMagi();
         SunBlade = BuildSunBlade();
@@ -65,7 +68,8 @@ internal static class MagicItemsContext
 
         foreach (var item in new[]
                  {
-                     OrbOfSorcery, RobeOfTheArchmagi, SpellguardShield, StaffOfPower, StaffOfTheMagi, SunBlade,
+                     OrbOfSorcery, RobeOfTheArchmagi, SpellguardShield, StaffOfFrost, StaffOfPower, StaffOfTheMagi,
+                     SunBlade,
                      AnstruthHarp, CanaithMandolin, CliLyre, DossLute, FochlucanBandore, MacFuirmidhCittern,
                      OllamhHarp, SpellDuelistsTrophy
                  })
@@ -76,6 +80,7 @@ internal static class MagicItemsContext
         MerchantContext.AddItem(OrbOfSorcery, ShopItemType.MagicItemUncommon);
         MerchantContext.AddItem(SunBlade, ShopItemType.MagicItemRare);
         MerchantContext.AddItem(SpellguardShield, ShopItemType.MagicItemVeryRare);
+        MerchantContext.AddItem(StaffOfFrost, ShopItemType.MagicItemVeryRare);
         MerchantContext.AddItem(StaffOfPower, ShopItemType.MagicItemVeryRare);
         MerchantContext.AddItem(RobeOfTheArchmagi, ShopItemType.MagicItemLegendary);
         MerchantContext.AddItem(StaffOfTheMagi, ShopItemType.MagicItemLegendary);
@@ -296,6 +301,39 @@ internal static class MagicItemsContext
 
     #region Staffs
 
+    private static bool IsChargedStaff(ItemDefinition itemDefinition)
+    {
+        return itemDefinition && (itemDefinition == StaffOfFrost ||
+                                  itemDefinition == StaffOfPower ||
+                                  itemDefinition == StaffOfTheMagi);
+    }
+
+    private static ItemDefinition BuildStaffOfFrost()
+    {
+        const string NAME = "StaffOfFrost";
+
+        var item = BuildStaff(NAME, ItemRarity.VeryRare, 40000,
+            new UsableDeviceDescriptionBuilder()
+                .SetUsage(EquipmentDefinitions.ItemUsage.Charges)
+                .SetChargesCapitalNumber(StaffOfFrostMaxCharges)
+                .SetRecharge(RechargeRate.Dawn, 1, DieType.D6, 4)
+                .SetOutOfChargesConsequence(EquipmentDefinitions.ItemOutOfCharges.Persist)
+                .SetSaveDc(EffectHelpers.BasedOnUser)
+                .SetMagicAttackBonus(EffectHelpers.BasedOnUser)
+                .AddFunctions(
+                    SpellFunction(SpellDefinitions.ConeOfCold, 5),
+                    SpellFunction(SpellDefinitions.FogCloud, 1),
+                    SpellFunction(SpellDefinitions.IceStorm, 4),
+                    SpellFunction(SpellsContext.WallOfIce, 4))
+                .Build(),
+            new DeviceSpellLevels(),
+            Resources.StaffOfFrost,
+            [Druid, Sorcerer, Warlock, Wizard],
+            BuildFrom(FeatureDefinitionDamageAffinitys.DamageAffinityColdResistance, false));
+
+        return item;
+    }
+
     private static ItemDefinition BuildStaffOfPower()
     {
         const string NAME = "StaffOfPower";
@@ -344,6 +382,7 @@ internal static class MagicItemsContext
                 (SpellDefinitions.Fireball, 5),
                 (SpellDefinitions.LightningBolt, 5)),
             Resources.StaffOfPower,
+            [Sorcerer, Warlock, Wizard],
             WeaponPlus2,
             BuildFrom(FeatureDefinitionAttributeModifiers.AttributeModifierArmorPlus2, false),
             BuildFrom(savingThrowAffinity, false),
@@ -402,6 +441,7 @@ internal static class MagicItemsContext
                 (SpellDefinitions.Fireball, 7),
                 (SpellDefinitions.LightningBolt, 7)),
             Resources.StaffOfTheMagi,
+            [Sorcerer, Warlock, Wizard],
             WeaponPlus2,
             BuildFrom(FeatureDefinitionSavingThrowAffinitys.SavingThrowAffinitySpellResistance, false),
             BuildFrom(magicAffinity, false),
@@ -417,6 +457,7 @@ internal static class MagicItemsContext
         UsableDeviceDescription usableDeviceDescription,
         DeviceSpellLevels deviceSpellLevels,
         byte[] icon,
+        CharacterClassDefinition[] attunementClasses,
         params ItemPropertyDescription[] properties)
     {
         var baseItem = ItemDefinitions.StaffOfFire;
@@ -427,7 +468,7 @@ internal static class MagicItemsContext
             .SetItemRarity(rarity)
             .MakeMagical()
             .SetRequiresIdentification(false)
-            .RequireAttunement(Sorcerer, Warlock, Wizard)
+            .RequireAttunement(attunementClasses)
             .SetGold(gold)
             .SetUsableDeviceDescription(usableDeviceDescription)
             .SetStaticProperties(properties)
@@ -487,7 +528,7 @@ internal static class MagicItemsContext
     internal static void RemoveStaffSpellTags(
         ItemDefinition itemDefinition, Dictionary<string, TagsDefinitions.Criticity> tagsMap)
     {
-        if (itemDefinition != StaffOfPower && itemDefinition != StaffOfTheMagi)
+        if (!IsChargedStaff(itemDefinition))
         {
             return;
         }
@@ -509,7 +550,7 @@ internal static class MagicItemsContext
     internal static void CompactStaffFunctions(TooltipFeatureDeviceFunctionsEnumerator enumerator, ITooltip tooltip)
     {
         if (tooltip.DataProvider is not IItemDefinitionProvider { ItemDefinition: var itemDefinition } ||
-            (itemDefinition != StaffOfPower && itemDefinition != StaffOfTheMagi) ||
+            !IsChargedStaff(itemDefinition) ||
             !enumerator.gameObject.activeSelf ||
             !enumerator.functionsTable.gameObject.activeSelf)
         {
@@ -563,7 +604,7 @@ internal static class MagicItemsContext
     {
         var itemDefinition = usableDevice.ItemDefinition;
 
-        if ((itemDefinition != StaffOfPower && itemDefinition != StaffOfTheMagi) ||
+        if (!IsChargedStaff(itemDefinition) ||
             function.DeviceFunctionDescription.UseAffinity !=
             DeviceFunctionDescription.FunctionUseAffinity.ChargeCost ||
             usableDevice.RemainingCharges > 0)
@@ -575,6 +616,19 @@ internal static class MagicItemsContext
         var roll = RollDie(DieType.D20, AdvantageType.None, out _, out _);
 
         hero.ShowDieRoll(DieType.D20, roll, title: itemDefinition.GuiPresentation.Title);
+
+        // on a 1 the Staff of Frost turns to water and is destroyed
+        if (itemDefinition == StaffOfFrost)
+        {
+            if (roll == 1)
+            {
+                hero.LogCharacterActivatesAbility(itemDefinition.GuiPresentation.Title,
+                    "Feedback/&StaffOfFrostDestroyed");
+                hero.CharacterInventory.DestroyItem(usableDevice);
+            }
+
+            return;
+        }
 
         if (roll == 20)
         {
